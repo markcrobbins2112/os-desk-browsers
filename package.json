@@ -1,0 +1,28 @@
+{
+    "name": "os-desk-browsers",
+    "version": "1.0.0",
+    "description": "Multi-window advanced window tiling grid manager and browser selector for AutoIt v3",
+    "main": "desk-browsers.au3",
+    "scripts": {
+      "build": "echo 'Desktop app code successfully condensed and structured.'",
+      "start": "autoit3.exe \"desk-browsers.au3\"",
+      "check": "au3check.exe \"desk-browsers.au3\"",
+      "compile": "Aut2exe.exe /In \"desk-browsers.au3\" /Out \"BrowserManager.exe\" /Icon \"shell32.dll\" /IconIndex 14 /Console",
+      "compile:x64": "Aut2exe.exe /In \"desk-browsers.au3\" /Out \"BrowserManager_x64.exe\" /X64 /Console",
+      "test": "npm run check && npm run start"
+    },
+    "keywords": [
+      "autoit",
+      "autoit3",
+      "window-manager",
+      "tiling-wm",
+      "automation",
+      "browser-manager"
+    ],
+    "author": "",
+    "license": "ISC",
+    "engines": {
+      "autoit": ">=3.3.16.0"
+    }
+  }
+  
