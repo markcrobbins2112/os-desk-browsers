@@ -37,12 +37,14 @@
 - [x] Update active window selectors to target topmost visible browser matching Highest Z-Index.
 - [x] Review, reverse engineer, and fully document all markdown developer files.
 - [x] Fix completely broken accelerator keys in the window manager GUI.
+- [x] Implement dynamic Z-order browser promotion on focus/selection and restoration on defocus/unselection.
 
 ## 🔄 New Changes
 [[#^toc-changes|TOC]]
 - [x] Merge modular components to `desk-browsers.au3`.
 - [x] Clean up and delete obsolete split structures.
 - [x] Redimension accelerator array to exact mapped bounds to resolve `GUISetAccelerators` registration errors.
+- [x] Redesign `_HandleZOrderSelection` to support focus promotion and exact defocus restoration.
 
 ## ⚙️ New Settings
 [[#^toc-new-settings|TOC]]

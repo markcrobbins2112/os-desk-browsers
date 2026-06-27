@@ -324,12 +324,29 @@ EndFunc
 
 ; Handles Z-Order checking, selections, and updating frame locations
 Func _HandleZOrderSelection()
-    If Not $bGUI_Visible Or Int(ControlGetFocus($hGUI)) <> Int(GUICtrlGetHandle($idListview)) Then Return
-    Local $iSelected = _GUICtrlListView_GetSelectedIndices($idListview)
+    Local $bDeFocused = False
+    If Not $bGUI_Visible Then
+        $bDeFocused = True
+    Else
+        Local $hFocusedCtrl = ControlGetFocus($hGUI)
+        Local $hListviewHandle = GUICtrlGetHandle($idListview)
+        If Int($hFocusedCtrl) <> Int($hListviewHandle) Then
+            $bDeFocused = True
+        EndIf
+    EndIf
     
-    If $iSelected = "" Then
+    If Not $bDeFocused Then
+        Local $iSelected = _GUICtrlListView_GetSelectedIndices($idListview)
+        If $iSelected = "" Then
+            $bDeFocused = True
+        EndIf
+    EndIf
+    
+    If $bDeFocused Then
         If $hLastSelectedWin <> 0 Then
-            _WinAPI_SetWindowPos($hLastSelectedWin, $hLastPrevWin, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE))
+            If _WinAPI_IsWindow($hLastSelectedWin) Then
+                _WinAPI_SetWindowPos($hLastSelectedWin, $hLastPrevWin, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE))
+            EndIf
             $hLastSelectedWin = 0
             $hLastPrevWin = 0
             _ClearOrangeBorder()
@@ -337,14 +354,17 @@ Func _HandleZOrderSelection()
         Return
     EndIf
     
+    Local $iSelected = _GUICtrlListView_GetSelectedIndices($idListview)
     Local $iIdx = Int($iSelected)
     Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $aBrowsers[$iIdx][1] & "$]")
     If $aWinList[0][0] > 0 Then
         Local $hTargetWin = $aWinList[1][1] ; Highest window frame in Z-Order
         If $hTargetWin <> $hLastSelectedWin Then
-            If $hLastSelectedWin <> 0 Then _WinAPI_SetWindowPos($hLastSelectedWin, $hLastPrevWin, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE))
+            If $hLastSelectedWin <> 0 And _WinAPI_IsWindow($hLastSelectedWin) Then
+                _WinAPI_SetWindowPos($hLastSelectedWin, $hLastPrevWin, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE))
+            EndIf
             $hLastSelectedWin = $hTargetWin
-            $hLastPrevWin = _WinAPI_GetWindow($hTargetWin, 3) ; GW_HWNDNEXT
+            $hLastPrevWin = _WinAPI_GetWindow($hTargetWin, 3) ; GW_HWNDPREV (3)
             
             _WinAPI_SetWindowPos($hTargetWin, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE)) ; HWND_TOP = 0
             _WinAPI_SetWindowPos($hGUI, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE)) ; Keep Manager above it
@@ -356,6 +376,13 @@ Func _HandleZOrderSelection()
             _ClearOrangeBorder()
         EndIf
     Else
+        If $hLastSelectedWin <> 0 Then
+            If _WinAPI_IsWindow($hLastSelectedWin) Then
+                _WinAPI_SetWindowPos($hLastSelectedWin, $hLastPrevWin, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE))
+            EndIf
+            $hLastSelectedWin = 0
+            $hLastPrevWin = 0
+        EndIf
         _ClearOrangeBorder()
     EndIf
 EndFunc
@@ -783,6 +810,8 @@ Func _MinimizeToTray()
     $bGUI_Visible = False
     TraySetState(1)
     _ClearOrangeBorder()
+    $hLastSelectedWin = 0
+    $hLastPrevWin = 0
 EndFunc
 
 Func _HandleClose()
@@ -790,6 +819,9 @@ Func _HandleClose()
 EndFunc
 
 Func _ExitApp()
+    If $hLastSelectedWin <> 0 And _WinAPI_IsWindow($hLastSelectedWin) Then
+        _WinAPI_SetWindowPos($hLastSelectedWin, $hLastPrevWin, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE))
+    EndIf
     _ClearOrangeBorder()
     Exit
 EndFunc

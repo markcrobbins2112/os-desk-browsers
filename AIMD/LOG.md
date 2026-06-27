@@ -25,32 +25,33 @@
 ## 💾 Commit Message
 [[#^toc-commit|TOC]]
 ```text
-fix: resolve non-functional accelerator keys by dynamically sizing bindings array
+feat: implement dynamic Z-order window promotion on focus and restoration on defocus
 
-- Added dual-case letter mappings (lowercase and uppercase) to the accelerator array
-- Prevented GUISetAccelerators failure by resizing the keybinding array to its exact count using ReDim
-- Prevented potential CapsLock and Shift key conflicts with browser quick-launch hotkeys
+- Automatically promotes the highest window of the selected browser to the top of Z-order and applies the orange highlight border when focused/selected.
+- Dynamically restores the selected window to its exact original Z-order position and removes the orange border when de-focused (unselected, listview loses focus, or manager minimizes/hides).
+- Robustly handles process exit and window destruction states to prevent orphaned tracking handles.
 ```
 
 ## 📝 Log Entries
 [[#^toc-entries|TOC]]
 
-### 📅 [2026-06-27T16:35:00-07:00]
+### 📅 [2026-06-27T16:45:00-07:00]
 #### 🎯 Primary Goals & Requirements
-- Resolve the issue where accelerator keys were completely non-functional.
+- Dynamically promote the selected browser window to the top of the Z-order with an orange border.
+- Restore the window back to its original Z-order and remove the orange border when de-focused.
 
 #### 🛠️ Completed Changes in this Session
-- Identified that `GUISetAccelerators` fails to register any hotkeys if there are unpopulated/empty rows in the mapping array.
-- Enlarged the static accelerator binding array size allocation to `100` to accommodate dual-case mapping.
-- Added upper-case equivalents for browser quick-launch, close, and focus hotkeys to support Shift/CapsLock variants cleanly.
-- Implemented `ReDim` to slice the `$aAccelKeys` array to the exact number of active entries (`$idx`), preventing registration failures.
+- Redesigned `_HandleZOrderSelection()` to robustly detect de-focus conditions (GUI invisible, ListView lost focus, or empty selection).
+- Implemented exact sibling window restoration using `GW_HWNDPREV` (3) and `_WinAPI_SetWindowPos` to push the window back to its precise previous Z-order position upon defocus.
+- Integrated safety checks using `_WinAPI_IsWindow()` to prevent calls on invalidated or closed window handles.
+- Updated `_MinimizeToTray()` and `_ExitApp()` to clear selection states and clean up remaining highlights or window positions on exit.
 
 #### 🔸 Affected Files
 - `/desk-browsers.au3`
 
 ---
 
-### 📅 [2026-06-27T16:16:00-07:00]
+### 📅 [2026-06-27T16:35:00-07:00]
 #### 🎯 Primary Goals & Requirements
 - Complete a comprehensive review of all markdown files and reverse engineer the active AutoIt codebase.
 - Populate technical, design, and structural guidelines, removing all template placeholders.
