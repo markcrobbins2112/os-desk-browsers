@@ -338,13 +338,15 @@ Func _HandleZOrderSelection()
     EndIf
 EndFunc
 
-; Helper to grab the topmost handle matching the selected browser in the row layout
+; Helper to grab the topmost handle matching the selected browser in the row layout favoring highest visible z-index
 Func _GetSelectedBrowserWindow()
     Local $iSelected = _GUICtrlListView_GetSelectedIndices($idListview)
     If $iSelected = "" Then Return 0
     Local $iIdx = Int($iSelected)
     Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $aBrowsers[$iIdx][1] & "$]")
-    If $aWinList[0][0] > 0 Then Return $aWinList[1][1]
+    For $i = 1 To $aWinList[0][0]
+        If BitAND(WinGetState($aWinList[$i][1]), 2) Then Return $aWinList[$i][1]
+    Next
     Return 0
 EndFunc
 
@@ -472,27 +474,39 @@ EndFunc
 
 Func _CheckBrowserRunning($iIndex)
     Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $aBrowsers[$iIndex][1] & "$]")
-    Return ($aWinList[0][0] > 0)
+    For $i = 1 To $aWinList[0][0]
+        If BitAND(WinGetState($aWinList[$i][1]), 2) Then Return True
+    Next
+    Return False
 EndFunc
 
-; Modified action engine to strictly target and close the highest single frame matching the row item array
+; Modified action engine to strictly target and close the highest single frame matching the row item array favoring highest visible z-index
 Func _HandleAction($iIndex, $bClose)
     Local $sName = $aBrowsers[$iIndex][0]
     Local $sSuffix = $aBrowsers[$iIndex][1]
     Local $sPath = $aBrowsers[$iIndex][2]
     Local $sProc = $aBrowsers[$iIndex][3]
     
+    Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $sSuffix & "$]")
+    Local $hTargetWin = 0
+    
+    ; Find the highest visible window in the stack (by checking standard visible state)
+    For $i = 1 To $aWinList[0][0]
+        If BitAND(WinGetState($aWinList[$i][1]), 2) Then
+            $hTargetWin = $aWinList[$i][1]
+            ExitLoop
+        EndIf
+    Next
+    
     If $bClose Then
-        Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $sSuffix & "$]")
-        If $aWinList[0][0] > 0 Then
-            WinClose($aWinList[1][1]) ; Closes strictly the highest index item window frame in the stack
+        If $hTargetWin <> 0 Then
+            WinClose($hTargetWin) ; Closes strictly the highest Z-order visible window frame matching the browser
             GUICtrlSetData($idStatus, "Closed top window of: " & $sName)
         EndIf
     Else
-        If _CheckBrowserRunning($iIndex) Then
-            Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $sSuffix & "$]")
-            WinActivate($aWinList[1][1])
-            WinSetState($aWinList[1][1], "", @SW_RESTORE)
+        If $hTargetWin <> 0 Then
+            WinActivate($hTargetWin)
+            WinSetState($hTargetWin, "", @SW_RESTORE)
             _MinimizeToTray()
         Else
             If FileExists($sPath) Then
