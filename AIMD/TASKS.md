@@ -36,11 +36,13 @@
 - [x] Consolidate split script files into a single unified workspace to fix compile inclusion path bugs.
 - [x] Update active window selectors to target topmost visible browser matching Highest Z-Index.
 - [x] Review, reverse engineer, and fully document all markdown developer files.
+- [x] Fix completely broken accelerator keys in the window manager GUI.
 
 ## 🔄 New Changes
 [[#^toc-changes|TOC]]
 - [x] Merge modular components to `desk-browsers.au3`.
 - [x] Clean up and delete obsolete split structures.
+- [x] Redimension accelerator array to exact mapped bounds to resolve `GUISetAccelerators` registration errors.
 
 ## ⚙️ New Settings
 [[#^toc-new-settings|TOC]]
@@ -55,6 +57,7 @@
 [[#^toc-new-bindings|TOC]]
 - [x] Binding: `Win + AppsKey` (ContextMenu Key)
   - Toggles manager visibility from anywhere.
+- [x] Dual-case letter hotkeys (lowercase/uppercase browser mapping) to prevent Shift/CapsLock lockouts.
 
 ## 🚀 New Features
 [[#^toc-new-features|TOC]]

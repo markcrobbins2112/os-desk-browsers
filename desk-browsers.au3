@@ -177,24 +177,43 @@ GUICtrlSetOnEvent($idDummySendToBack, "_OnSendToBack")
 $idDummyMinimizeToggle = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyMinimizeToggle, "_OnMinimizeToggle")
 
-Local $aAccelKeys[50][2]
+Local $aAccelKeys[100][2]
 Local $idx = 0
 
-; 1. Map Browser Launch, Close, and Focus binds (6 browsers * 3 variations = 18 slots)
+; 1. Map Browser Launch, Close, and Focus binds (handling both lower & upper case letters to prevent Shift/Capslock issues)
 For $i = 0 To $iBrowserCount - 1
     Local $sL = StringLower($aBrowsers[$i][4]) ; Targets the unique character suffix letter
+    Local $sU = StringUpper($aBrowsers[$i][4])
     
     $aAccelKeys[$idx][0] = $sL
     $aAccelKeys[$idx][1] = $aDummyActivate[$i]
     $idx += 1
     
+    If $sL <> $sU Then
+        $aAccelKeys[$idx][0] = $sU
+        $aAccelKeys[$idx][1] = $aDummyActivate[$i]
+        $idx += 1
+    EndIf
+    
     $aAccelKeys[$idx][0] = "^" & $sL
     $aAccelKeys[$idx][1] = $aDummyClose[$i]
     $idx += 1
     
+    If $sL <> $sU Then
+        $aAccelKeys[$idx][0] = "^" & $sU
+        $aAccelKeys[$idx][1] = $aDummyClose[$i]
+        $idx += 1
+    EndIf
+    
     $aAccelKeys[$idx][0] = "!" & $sL
     $aAccelKeys[$idx][1] = $aDummyFocus[$i]
     $idx += 1
+    
+    If $sL <> $sU Then
+        $aAccelKeys[$idx][0] = "!" & $sU
+        $aAccelKeys[$idx][1] = $aDummyFocus[$i]
+        $idx += 1
+    EndIf
 Next
 
 ; 2. Map Window 3x3 Tile Snapping grids (9 frames * 2 variations = 18 slots)
@@ -248,6 +267,9 @@ $idx += 1
 $aAccelKeys[$idx][0] = "{BACKSPACE}"
 $aAccelKeys[$idx][1] = $idDummySendToBack
 $idx += 1
+
+; ReDim the array to the exact count of mapped keys to avoid empty/unpopulated trailing rows which fail GUISetAccelerators
+ReDim $aAccelKeys[$idx][2]
 
 ; Bind the structured 2D accelerator map to our operational main workspace handle
 GUISetAccelerators($aAccelKeys, $hGUI)

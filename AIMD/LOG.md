@@ -25,17 +25,30 @@
 ## 💾 Commit Message
 [[#^toc-commit|TOC]]
 ```text
-docs: reverse engineer codebase and populate complete technical documentation
+fix: resolve non-functional accelerator keys by dynamically sizing bindings array
 
-- Completed detailed architectural specifications in SPEC.md and DESIGN.md
-- Documented full keyboard commands, mathematical formulas, and GDI indicators in MANUAL.md
-- Configured automated NPM run guidelines in BUILD.md
-- Formulated testing scenarios in TESTING.md and glossary definitions in TERMS.md
-- Resolved all template placeholders to establish high-fidelity developer handbooks
+- Added dual-case letter mappings (lowercase and uppercase) to the accelerator array
+- Prevented GUISetAccelerators failure by resizing the keybinding array to its exact count using ReDim
+- Prevented potential CapsLock and Shift key conflicts with browser quick-launch hotkeys
 ```
 
 ## 📝 Log Entries
 [[#^toc-entries|TOC]]
+
+### 📅 [2026-06-27T16:35:00-07:00]
+#### 🎯 Primary Goals & Requirements
+- Resolve the issue where accelerator keys were completely non-functional.
+
+#### 🛠️ Completed Changes in this Session
+- Identified that `GUISetAccelerators` fails to register any hotkeys if there are unpopulated/empty rows in the mapping array.
+- Enlarged the static accelerator binding array size allocation to `100` to accommodate dual-case mapping.
+- Added upper-case equivalents for browser quick-launch, close, and focus hotkeys to support Shift/CapsLock variants cleanly.
+- Implemented `ReDim` to slice the `$aAccelKeys` array to the exact number of active entries (`$idx`), preventing registration failures.
+
+#### 🔸 Affected Files
+- `/desk-browsers.au3`
+
+---
 
 ### 📅 [2026-06-27T16:16:00-07:00]
 #### 🎯 Primary Goals & Requirements
