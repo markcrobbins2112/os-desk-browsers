@@ -44,9 +44,12 @@ Global $aIconIndices[6]
 
 Global $idDummyEscape
 Global $idDummyInsert
+Global $idDummyDelete
 Global $idDummyPageUp
 Global $idDummyPageDown
 Global $idDummySiblingUp
+Global $idDummyRight
+Global $idDummyLeft
 Global $idDummyCopyUrl
 Global $idDummySendToBack
 Global $idDummyMinimizeToggle

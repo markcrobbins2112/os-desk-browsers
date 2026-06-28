@@ -54,6 +54,7 @@ feat: implement dynamic z-order restoration, tab/sibling navigation hotkeys, ric
 #### 🛠️ Completed Changes in this Session
 - Refactored `_DrawOrangeBorder` and `_ClearOrangeBorder` to dynamically track the target window's original Z-index sibling (`_WinAPI_GetWindow` using `GW_HWNDPREV` (3)) and restore it perfectly when the border is cleared.
 - Registered `{INS}`, `{DEL}`, `{RIGHT}`, and `{LEFT}` hotkeys in the accelerator map, bound to dedicated Dummy controls and event handlers.
+- Declared the new Dummy variables `$idDummyDelete`, `$idDummyRight`, and `$idDummyLeft` globally at the top of the file to fix the "Variable used without being declared" startup crash.
 - Implemented `_OnDeletePressed()`, sending `^w` to close the selected window's active tab.
 - Implemented `_OnRightPressed()`, locating the deepest sibling in the matching browser window list and promoting it to the top.
 - Implemented `_OnLeftPressed()`, pushing the current top window immediately behind the deepest sibling in the Z-order and promoting the next sibling window to the top.
