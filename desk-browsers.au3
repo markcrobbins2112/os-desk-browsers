@@ -41,6 +41,7 @@ Global $aDummyClose[6]
 Global $aDummyFocus[6]
 Global $aDummyGrid[10] ; 0-9 hotkeys
 Global $aDummySwap[9]   ; 1-9 swap hotkeys
+Global $aDummyFocusGrid[10] ; Alt + 0-9 focus hotkeys
 Global $aIconIndices[6]
 
 Global $idDummyEscape
@@ -51,6 +52,8 @@ Global $idDummyPageDown
 Global $idDummySiblingUp
 Global $idDummyRight
 Global $idDummyLeft
+Global $idDummyCycleNext
+Global $idDummyCyclePrev
 Global $idDummyCopyUrl
 Global $idDummySendToBack
 Global $idDummyMinimizeToggle
@@ -172,6 +175,8 @@ Next
 For $i = 0 To 9
     $aDummyGrid[$i] = GUICtrlCreateDummy()
     GUICtrlSetOnEvent($aDummyGrid[$i], "_OnGridHotkey")
+    $aDummyFocusGrid[$i] = GUICtrlCreateDummy()
+    GUICtrlSetOnEvent($aDummyFocusGrid[$i], "_OnFocusGridHotkey")
 Next
 For $i = 1 To 9
     $aDummySwap[$i-1] = GUICtrlCreateDummy()
@@ -194,6 +199,10 @@ $idDummyRight = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyRight, "_OnRightPressed")
 $idDummyLeft = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyLeft, "_OnLeftPressed")
+$idDummyCycleNext = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyCycleNext, "_OnCycleNext")
+$idDummyCyclePrev = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyCyclePrev, "_OnCyclePrev")
 $idDummyCopyUrl = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyCopyUrl, "_OnCopyUrl")
 $idDummySendToBack = GUICtrlCreateDummy()
@@ -203,7 +212,7 @@ GUICtrlSetOnEvent($idDummyMinimizeToggle, "_OnMinimizeToggle")
 $idDummyEnter = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyEnter, "_OnEnterPressed")
 
-Local $aAccelKeys[110][2]
+Local $aAccelKeys[150][2]
 Local $idx = 0
 
 ; 1. Map Browser Launch, Close, and Focus binds (handling both lower & upper case letters to prevent Shift/Capslock issues)
@@ -251,11 +260,19 @@ For $i = 1 To 9
     $aAccelKeys[$idx][0] = "^" & String($i)
     $aAccelKeys[$idx][1] = $aDummySwap[$i-1]
     $idx += 1
+    
+    $aAccelKeys[$idx][0] = "!" & String($i)
+    $aAccelKeys[$idx][1] = $aDummyFocusGrid[$i]
+    $idx += 1
 Next
 
 ; 3. Map System and Utility hotkey rules (10 slots)
 $aAccelKeys[$idx][0] = "0"
 $aAccelKeys[$idx][1] = $aDummyGrid[0]
+$idx += 1
+
+$aAccelKeys[$idx][0] = "!0"
+$aAccelKeys[$idx][1] = $aDummyFocusGrid[0]
 $idx += 1
 
 $aAccelKeys[$idx][0] = "{ESC}"
@@ -276,6 +293,14 @@ $idx += 1
 
 $aAccelKeys[$idx][0] = "{PGDN}"
 $aAccelKeys[$idx][1] = $idDummyPageDown
+$idx += 1
+
+$aAccelKeys[$idx][0] = "^{PGUP}"
+$aAccelKeys[$idx][1] = $idDummyCyclePrev
+$idx += 1
+
+$aAccelKeys[$idx][0] = "^{PGDN}"
+$aAccelKeys[$idx][1] = $idDummyCycleNext
 $idx += 1
 
 $aAccelKeys[$idx][0] = "!{PGUP}"
@@ -661,8 +686,9 @@ Func _DrawOrangeBorder($hTarget)
         $hLastSelectedWin = $hTarget
         $hLastPrevWin = _WinAPI_GetWindow($hTarget, 3) ; GW_HWNDPREV = 3
         
-        _WinAPI_SetWindowPos($hTarget, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE)) ; HWND_TOP = 0
+        _WinAPI_SetWindowPos($hTarget, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE)) ; HWND_TOP = 0
         If $bGUI_Visible Then
+            WinActivate($hGUI)
             _WinAPI_SetWindowPos($hGUI, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE)) ; Keep Manager above it
         EndIf
     EndIf
@@ -766,6 +792,7 @@ Func _ShowHelp()
     EndIf
     
     Local $idIE_Ctrl = GUICtrlCreateObj($oIE, 5, 5, 600, 500)
+    _WinAPI_SetWindowLong(GUICtrlGetHandle($idIE_Ctrl), -20, BitAND(_WinAPI_GetWindowLong(GUICtrlGetHandle($idIE_Ctrl), -20), BitNOT(0x00000200)))
     
     ; Navigate to empty page and write the beautiful HTML
     $oIE.navigate("about:blank")
@@ -779,6 +806,12 @@ Func _ShowHelp()
         "<head>" & _
         '    <meta http-equiv="X-UA-Compatible" content="IE=edge">' & _
         "    <style>" & _
+        "        html {" & _
+        "            border: 0px none !important;" & _
+        "            margin: 0;" & _
+        "            padding: 0;" & _
+        "            overflow: auto;" & _
+        "        }" & _
         "        body {" & _
         "            background-color: #1E1E1E;" & _
         "            color: #E0E0E0;" & _
@@ -788,6 +821,7 @@ Func _ShowHelp()
         "            font-size: 13px;" & _
         "            user-select: none;" & _
         "            cursor: default;" & _
+        "            border: 0px none !important;" & _
         "        }" & _
         "        h1 {" & _
         "            color: #FF6600;" & _
@@ -1003,12 +1037,16 @@ Func _OnEnterPressed()
 EndFunc
 
 Func _OnDeletePressed()
-    Local $hWnd = _GetSelectedBrowserWindow()
+    Local $hWnd = $hLastSelectedWin
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
     If $hWnd Then
+        Local $hActivePrev = WinGetHandle("[ACTIVE]")
         WinActivate($hWnd)
-        ControlSend($hWnd, "", "", "^w")
-        WinActivate($hGUI)
-        GUICtrlSetData($idStatus, "Closed active tab of selected browser window")
+        Sleep(50)
+        Send("^w")
+        Sleep(50)
+        If $hActivePrev Then WinActivate($hActivePrev)
+        GUICtrlSetData($idStatus, "Closed active tab of indicated window")
     EndIf
 EndFunc
 
@@ -1125,6 +1163,91 @@ Func _OnGridHotkey()
     _PopulateList($aIconIndices)
 EndFunc
 
+Func _OnFocusGridHotkey()
+    Local $idPressed = @GUI_CtrlId
+    Local $iTargetPos = -1
+    If $idPressed = $aDummyFocusGrid[0] Then
+        $iTargetPos = 0
+    Else
+        For $i = 1 To 9
+            If $idPressed = $aDummyFocusGrid[$i] Then
+                $iTargetPos = $i
+                ExitLoop
+            EndIf
+        Next
+    Endif
+    If $iTargetPos = -1 Then Return
+    
+    Local $hWnd = _GetWindowAtGridPosition($iTargetPos)
+    If $hWnd <> 0 Then
+        Local $sTitle = WinGetTitle($hWnd)
+        Local $iMatchIdx = -1
+        For $b = 0 To $iBrowserCount - 1
+            If StringInStr($sTitle, $aBrowsers[$b][1]) Then
+                $iMatchIdx = $b
+                ExitLoop
+            EndIf
+        Next
+        
+        If $iMatchIdx <> -1 Then
+            _WinAPI_SetWindowPos($hWnd, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE)) ; HWND_TOP = 0
+            If $bGUI_Visible Then
+                WinActivate($hGUI)
+            EndIf
+            
+            _GUICtrlListView_SetItemSelected($idListview, $iMatchIdx, True, True)
+            _GUICtrlListView_EnsureVisible($idListview, $iMatchIdx)
+            ControlFocus($hGUI, "", $idListview)
+            
+            _DrawOrangeBorder($hWnd)
+            GUICtrlSetData($idStatus, "Focused window at grid position " & $iTargetPos)
+        EndIf
+    EndIf
+EndFunc
+
+Func _OnCycleNext()
+    _CycleGridWindows(True)
+EndFunc
+
+Func _OnCyclePrev()
+    _CycleGridWindows(False)
+EndFunc
+
+Func _CycleGridWindows($bNext)
+    Local $aWins = _GetAllVisibleBrowserWindows()
+    Local $aMoveList[100][2]
+    Local $iMoveCount = 0
+    
+    For $i = 0 To UBound($aWins) - 1
+        Local $hWnd = $aWins[$i]
+        Local $sPos = _GetGridPosition($hWnd)
+        If $sPos <> "None" And $sPos <> "0" Then
+            Local $iPos = Int($sPos)
+            If $iPos >= 1 And $iPos <= 9 Then
+                Local $iNewPos
+                If $bNext Then
+                    $iNewPos = $iPos + 1
+                    If $iNewPos > 9 Then $iNewPos = 1
+                Else
+                    $iNewPos = $iPos - 1
+                    If $iNewPos < 1 Then $iNewPos = 9
+                EndIf
+                $aMoveList[$iMoveCount][0] = $hWnd
+                $aMoveList[$iMoveCount][1] = $iNewPos
+                $iMoveCount += 1
+                If $iMoveCount >= 100 Then ExitLoop
+            EndIf
+        EndIf
+    Next
+    
+    For $i = 0 To $iMoveCount - 1
+        _MoveWindowToGridPosition($aMoveList[$i][0], $aMoveList[$i][1])
+    Next
+    
+    _PopulateList($aIconIndices)
+    GUICtrlSetData($idStatus, "Cycled grid windows " & ($bNext ? "forward" : "backward"))
+EndFunc
+
 Func _GetAllVisibleBrowserWindows()
     Local $aResult[100]
     Local $iCount = 0
@@ -1187,20 +1310,30 @@ Func _OnNewTab()
 EndFunc
 
 Func _OnTabLeft()
-    Local $hWnd = _GetSelectedBrowserWindow()
+    Local $hWnd = $hLastSelectedWin
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
     If $hWnd Then 
+        Local $hActivePrev = WinGetHandle("[ACTIVE]")
         WinActivate($hWnd)
-        ControlSend($hWnd, "", "", "^+{TAB}")
-        WinActivate($hGUI)
+        Sleep(50)
+        Send("^+{TAB}")
+        Sleep(50)
+        If $hActivePrev Then WinActivate($hActivePrev)
+        GUICtrlSetData($idStatus, "Switched to previous tab on indicated window")
     EndIf
 EndFunc
 
 Func _OnTabRight()
-    Local $hWnd = _GetSelectedBrowserWindow()
+    Local $hWnd = $hLastSelectedWin
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
     If $hWnd Then 
+        Local $hActivePrev = WinGetHandle("[ACTIVE]")
         WinActivate($hWnd)
-        ControlSend($hWnd, "", "", "^{TAB}")
-        WinActivate($hGUI)
+        Sleep(50)
+        Send("^{TAB}")
+        Sleep(50)
+        If $hActivePrev Then WinActivate($hActivePrev)
+        GUICtrlSetData($idStatus, "Switched to next tab on indicated window")
     EndIf
 EndFunc
 
@@ -1213,6 +1346,10 @@ Func _ToggleGUI()
 EndFunc
 
 Func _MinimizeToTray()
+    If $hHelpGUI <> 0 And WinExists($hHelpGUI) Then
+        _HelpGUI_Close()
+        Return
+    EndIf
     GUISetState(@SW_HIDE, $hGUI)
     $bGUI_Visible = False
     TraySetState(1)

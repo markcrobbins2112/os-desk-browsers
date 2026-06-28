@@ -40,6 +40,24 @@ feat: implement dynamic z-order restoration, tab/sibling navigation hotkeys, ric
 ## 📝 Log Entries
 [[#^toc-entries|TOC]]
 
+### 📅 [2026-06-28T01:15:00-07:00]
+#### 🎯 Primary Goals & Requirements
+- Implement Alt+0-9 keys to instantly move focus indicator (orange border) and promote the corresponding grid-positioned window to the top of the Z-order.
+- Brief activation and standard keystroke sending (`Send`) for PageUp, PageDown, and Delete keys targeting the indicated browser window, restoring focus afterwards.
+- Support Esc to close the Help guide window gracefully.
+- Remove any iframe-like borders or client edges around the HTML help document of the ActiveX object.
+- Implement Ctrl+PageUp and Ctrl+PageDown to cycle all windows currently on the grid to adjacent grid positions.
+
+#### 🛠️ Completed Changes in this Session
+- Implemented `Alt+0-9` grid focusing via `$aDummyFocusGrid` and `_OnFocusGridHotkey()`. It promotes the window to the top of its group, focuses the listview item, and immediately draws the orange border.
+- Refactored `_OnTabLeft()`, `_OnTabRight()`, and `_OnDeletePressed()` to save the active window, activate the indicated/selected browser window, send keys (`^+{TAB}`, `^{TAB}`, `^w`) after a brief sleep, and restore the previous focus.
+- Updated `_MinimizeToTray()` to check if `$hHelpGUI` is open and close it gracefully on Escape.
+- Set `html` and `body` CSS borders to `0px none !important` and stripped `WS_EX_CLIENTEDGE` from the embedded ActiveX control using `_WinAPI_SetWindowLong`.
+- Registered `^{PGUP}` and `^{PGDN}` to call `_CycleGridWindows()` to shift all visible grid windows in 1-9 positions.
+
+#### 🔸 Affected Files
+- `/desk-browsers.au3`
+
 ### 📅 [2026-06-28T01:00:00-07:00]
 #### 🎯 Primary Goals & Requirements
 - Restore the Help GUI dialog to a standard visible window frame to prevent transparency and rendering issues with ActiveX controls.
