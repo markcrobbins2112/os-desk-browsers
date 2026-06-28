@@ -40,6 +40,24 @@ feat: implement dynamic z-order restoration, tab/sibling navigation hotkeys, ric
 ## 📝 Log Entries
 [[#^toc-entries|TOC]]
 
+### 📅 [2026-06-28T00:50:00-07:00]
+#### 🎯 Primary Goals & Requirements
+- Fix non-closing Help GUI in OnEvent Mode.
+- Embed a gorgeous WebView-like HTML/CSS shortcut guide within the Help GUI.
+- Render with no system frame (borderless popup window) and beautiful branding.
+
+#### 🛠️ Completed Changes in this Session
+- Removed the blocking `While/Sleep` message-loop in `_ShowHelp` which previously captured and stalled the main AutoIt OnEvent queue.
+- Changed `$hHelpGUI` to use the borderless popup style (`0x80000000` / `$WS_POPUP`) to eliminate the heavy-handed default OS frame.
+- Embedded a modern ActiveX-backed web viewport (`Shell.Explorer.2`) styled in deep low-glare charcoal gray (`#1E1E1E`), clean custom `<kbd>` keyboard key capsules, and structured lists.
+- Outlined the borderless window with an elegant, branded 2px solid orange highlight wrapper (`0xFF6600`) to form a distinctive visual pairing.
+- Added a native, beautifully styled "Close Help Guide" dark button matching the application aesthetics, allowing instant, clean disposal via `_HelpGUI_Close` event handlers.
+
+#### 🔸 Affected Files
+- `/desk-browsers.au3`
+
+---
+
 ### 📅 [2026-06-28T00:40:00-07:00]
 #### 🎯 Primary Goals & Requirements
 - Fix the startup crash caused by undeclared/missing variables `$idDummyDelete`, `$idDummyRight`, `$idDummyLeft`, and style masks.

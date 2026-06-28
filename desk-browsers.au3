@@ -56,6 +56,7 @@ Global $idDummySendToBack
 Global $idDummyMinimizeToggle
 Global $idDummyEnter
 Global $bHelpClosed = False
+Global $hHelpGUI = 0
 
 Global $idHelpBtn
 Global $idListview
@@ -746,72 +747,235 @@ EndFunc
 ; ==============================================================================
 
 Func _ShowHelp()
-    Local $hHelpGUI = GUICreate("Help / Shortcut Guide", 580, 480, -1, -1, BitOR($WS_CAPTION, $WS_SYSMENU), -1, $hGUI)
-    GUISetBkColor(0x1E1E1E, $hHelpGUI)
+    If WinExists($hHelpGUI) Then
+        WinActivate($hHelpGUI)
+        Return
+    EndIf
     
-    Local $idHeader = GUICtrlCreateLabel("BROWSER MANAGER KEYBOARD SHORTCUTS", 20, 15, 540, 30)
-    GUICtrlSetFont($idHeader, 12, 800, 0, "Segoe UI")
-    GUICtrlSetColor($idHeader, 0xFF6600) ; Orange header
-    GUICtrlSetBkColor($idHeader, -2) ; $GUI_BKCOLOR_TRANSPARENT = -2
+    ; Create popup borderless help window centered on desktop.
+    ; Style 0x80000000 is $WS_POPUP.
+    ; Width: 600, Height: 540.
+    ; We set the GUI background color to Orange (0xFF6600) to act as a 2px outer border wrapper.
+    $hHelpGUI = GUICreate("Help / Shortcut Guide", 600, 540, -1, -1, 0x80000000, BitOR($WS_EX_TOPMOST, 0x00080000), $hGUI) ; 0x00080000 is $WS_EX_LAYERED
+    GUISetBkColor(0xFF6600, $hHelpGUI)
     
-    Local $idSubHeader = GUICtrlCreateLabel("Master your desktop workspace with these key combinations.", 20, 40, 540, 20)
-    GUICtrlSetFont($idSubHeader, 9, 400, 2, "Segoe UI")
-    GUICtrlSetColor($idSubHeader, 0x858585)
-    GUICtrlSetBkColor($idSubHeader, -2) ; $GUI_BKCOLOR_TRANSPARENT = -2
+    ; Create embedded browser control, leaving 2px on all sides for the orange border frame.
+    Local $oIE = ObjCreate("Shell.Explorer.2")
+    If Not IsObj($oIE) Then
+        MsgBox(16, "Error", "Failed to create Internet Explorer object for Web Help.")
+        Return
+    EndIf
     
-    Local $idKeysEdit = GUICtrlCreateEdit("", 20, 70, 540, 350, BitOR(0x0800, 0x0004, 0x00200000)) ; Read-only, Multiline, Vertical scroll
-    GUICtrlSetBkColor($idKeysEdit, 0x2D2D2D) ; Medium grey background
-    GUICtrlSetColor($idKeysEdit, 0xE0E0E0) ; Light grey text
-    GUICtrlSetFont($idKeysEdit, 10, 400, 0, "Consolas")
+    Local $idIE_Ctrl = GUICtrlCreateObj($oIE, 2, 2, 596, 480)
     
-    Local $sHelpText = _
-        " [GLOBAL HOTKEYS] (Works anywhere on system)" & @CRLF & _
-        "  • Win + AppsKey          : Toggle Browser Manager GUI visibility" & @CRLF & @CRLF & _
-        " [WORKSPACE NAVIGATION]" & @CRLF & _
-        "  • Letter Key (B/C/E/V/F/P): Activate or Launch targeted browser" & @CRLF & _
-        "  • Ctrl + Letter Key      : Safely close the top window of that browser" & @CRLF & _
-        "  • Alt + Letter Key       : Select and focus that browser item in list" & @CRLF & _
-        "  • Enter                  : Activate, restore, or launch selected browser" & @CRLF & _
-        "  • Escape (Esc)           : Minimize Manager window to system tray" & @CRLF & _
-        "  • Ctrl + C               : Copy current tab URL to Clipboard" & @CRLF & _
-        "  • Minus (-)              : Toggle minimize/restore on selected browser" & @CRLF & _
-        "  • Backspace              : Send selected window to back of Z-order" & @CRLF & @CRLF & _
-        " [TAB & SIBLING WINDOW NAVIGATION]" & @CRLF & _
-        "  • Page Up ({PGUP})       : Go to PREVIOUS tab of selected window" & @CRLF & _
-        "  • Page Down ({PGDN})     : Go to NEXT tab of selected window" & @CRLF & _
-        "  • Delete ({DEL})         : Close current tab of selected window (Ctrl+W)" & @CRLF & _
-        "  • Insert ({INS})         : Create a new tab (Ctrl+T) / clipboard launch" & @CRLF & _
-        "  • Right Arrow ({RIGHT})  : Bring deepest sibling of selected window to top" & @CRLF & _
-        "  • Left Arrow ({LEFT})    : Send current top window to bottom of its browser" & @CRLF & _
-        "                             siblings and bring next sibling to top" & @CRLF & @CRLF & _
-        " [DESKTOP GRID CONTROLS] (Applies to selected browser window)" & @CRLF & _
-        "  • Keys 1 to 9            : Snap window to 3x3 layout (1=top-left, 9=bottom-right)" & @CRLF & _
-        "  • Key 0                  : Center window (occupies 5/9th screen area)" & @CRLF & _
-        "  • Ctrl + 1 to 9          : Swap current center slot (5) window with target slot" & @CRLF & _
-        "  • Alt + PageUp/PageDown  : Bring ALL instances of selected browser to front"
-        
-    GUICtrlSetData($idKeysEdit, $sHelpText)
+    ; Navigate to empty page and write the beautiful HTML
+    $oIE.navigate("about:blank")
+    While $oIE.ReadyState <> 4
+        Sleep(10)
+    WEnd
     
-    Local $idCloseBtn = GUICtrlCreateButton("Close", 240, 432, 100, 28)
-    GUICtrlSetBkColor($idCloseBtn, 0x2D2D2D) ; Medium grey button background
+    Local $sHTML = _
+        "<!DOCTYPE html>" & _
+        "<html>" & _
+        "<head>" & _
+        '    <meta http-equiv="X-UA-Compatible" content="IE=edge">' & _
+        "    <style>" & _
+        "        body {" & _
+        "            background-color: #1E1E1E;" & _
+        "            color: #E0E0E0;" & _
+        "            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;" & _
+        "            margin: 0;" & _
+        "            padding: 24px;" & _
+        "            font-size: 13px;" & _
+        "            user-select: none;" & _
+        "            cursor: default;" & _
+        "        }" & _
+        "        h1 {" & _
+        "            color: #FF6600;" & _
+        "            font-size: 18px;" & _
+        "            font-weight: 800;" & _
+        "            margin: 0 0 4px 0;" & _
+        "            text-transform: uppercase;" & _
+        "            letter-spacing: 1px;" & _
+        "        }" & _
+        "        .subtitle {" & _
+        "            color: #858585;" & _
+        "            font-size: 11px;" & _
+        "            margin-bottom: 24px;" & _
+        "            font-style: italic;" & _
+        "        }" & _
+        "        .section {" & _
+        "            margin-bottom: 20px;" & _
+        "        }" & _
+        "        .section-title {" & _
+        "            color: #FF6600;" & _
+        "            font-size: 12px;" & _
+        "            font-weight: bold;" & _
+        "            border-bottom: 1px solid #333;" & _
+        "            padding-bottom: 4px;" & _
+        "            margin-bottom: 12px;" & _
+        "            text-transform: uppercase;" & _
+        "            letter-spacing: 0.5px;" & _
+        "        }" & _
+        "        .shortcut-table {" & _
+        "            width: 100%;" & _
+        "            border-collapse: collapse;" & _
+        "        }" & _
+        "        .shortcut-row {" & _
+        "            border-bottom: 1px solid #252525;" & _
+        "        }" & _
+        "        .shortcut-key {" & _
+        "            width: 170px;" & _
+        "            padding: 6px 0;" & _
+        "            vertical-align: middle;" & _
+        "        }" & _
+        "        .shortcut-desc {" & _
+        "            padding: 6px 0;" & _
+        "            color: #CCCCCC;" & _
+        "            vertical-align: middle;" & _
+        "        }" & _
+        "        kbd {" & _
+        "            background-color: #2D2D2D;" & _
+        "            color: #FFFFFF;" & _
+        "            border: 1px solid #444;" & _
+        "            border-bottom: 3px solid #444;" & _
+        "            border-radius: 4px;" & _
+        "            padding: 2px 6px;" & _
+        "            font-family: 'Consolas', monospace;" & _
+        "            font-size: 11px;" & _
+        "            display: inline-block;" & _
+        "            box-shadow: 0 1px 1px rgba(0,0,0,0.2);" & _
+        "        }" & _
+        "        .highlight {" & _
+        "            color: #FF6600;" & _
+        "            font-weight: bold;" & _
+        "        }" & _
+        "    </style>" & _
+        "</head>" & _
+        "<body>" & _
+        "    <h1>Browser Manager Shortcuts</h1>" & _
+        "    <div class='subtitle'>Master your desktop workspace with these key combinations.</div>" & _
+        "    " & _
+        "    <div class='section'>" & _
+        "        <div class='section-title'>Global Hotkeys</div>" & _
+        "        <table class='shortcut-table'>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Win</kbd> + <kbd>AppsKey</kbd></td>" & _
+        "                <td class='shortcut-desc'>Toggle Browser Manager GUI visibility</td>" & _
+        "            </tr>" & _
+        "        </table>" & _
+        "    </div>" & _
+        "    " & _
+        "    <div class='section'>" & _
+        "        <div class='section-title'>Workspace Navigation</div>" & _
+        "        <table class='shortcut-table'>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>B</kbd> / <kbd>C</kbd> / <kbd>E</kbd> / <kbd>V</kbd> / <kbd>F</kbd> / <kbd>P</kbd></td>" & _
+        "                <td class='shortcut-desc'>Activate or Launch targeted browser</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>Letter</kbd></td>" & _
+        "                <td class='shortcut-desc'>Safely close the top window of that browser</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Alt</kbd> + <kbd>Letter</kbd></td>" & _
+        "                <td class='shortcut-desc'>Select and focus that browser item in list</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Enter</kbd></td>" & _
+        "                <td class='shortcut-desc'>Activate, restore, or launch selected browser</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Esc</kbd></td>" & _
+        "                <td class='shortcut-desc'>Minimize Manager window to system tray</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>C</kbd></td>" & _
+        "                <td class='shortcut-desc'>Copy current tab URL to Clipboard</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>-</kbd> (Minus)</td>" & _
+        "                <td class='shortcut-desc'>Toggle minimize/restore on selected browser</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Backspace</kbd></td>" & _
+        "                <td class='shortcut-desc'>Send selected window to back of Z-order</td>" & _
+        "            </tr>" & _
+        "        </table>" & _
+        "    </div>" & _
+        "    " & _
+        "    <div class='section'>" & _
+        "        <div class='section-title'>Tab & Sibling Window Navigation</div>" & _
+        "        <table class='shortcut-table'>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Page Up</kbd></td>" & _
+        "                <td class='shortcut-desc'>Go to <span class='highlight'>PREVIOUS</span> tab of selected window</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Page Down</kbd></td>" & _
+        "                <td class='shortcut-desc'>Go to <span class='highlight'>NEXT</span> tab of selected window</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Delete</kbd></td>" & _
+        "                <td class='shortcut-desc'>Close current tab of selected window (<kbd>Ctrl</kbd>+<kbd>W</kbd>)</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Insert</kbd></td>" & _
+        "                <td class='shortcut-desc'>Create a new tab (<kbd>Ctrl</kbd>+<kbd>T</kbd>) / clipboard launch</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>&rarr;</kbd> (Right Arrow)</td>" & _
+        "                <td class='shortcut-desc'>Bring deepest sibling of selected window to top</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>&larr;</kbd> (Left Arrow)</td>" & _
+        "                <td class='shortcut-desc'>Send current top window to bottom, bring next to top</td>" & _
+        "            </tr>" & _
+        "        </table>" & _
+        "    </div>" & _
+        "    " & _
+        "    <div class='section'>" & _
+        "        <div class='section-title'>Desktop Grid Controls</div>" & _
+        "        <table class='shortcut-table'>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>1</kbd> to <kbd>9</kbd></td>" & _
+        "                <td class='shortcut-desc'>Snap window to 3x3 layout (1=top-left, 9=bottom-right)</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>0</kbd></td>" & _
+        "                <td class='shortcut-desc'>Center window (occupies 5/9th screen area)</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>1</kbd> to <kbd>9</kbd></td>" & _
+        "                <td class='shortcut-desc'>Swap current center slot (5) window with target slot</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Alt</kbd> + <kbd>PageUp/Dn</kbd></td>" & _
+        "                <td class='shortcut-desc'>Bring ALL instances of selected browser to front</td>" & _
+        "            </tr>" & _
+        "        </table>" & _
+        "    </div>" & _
+        "</body>" & _
+        "</html>"
+    
+    $oIE.document.write($sHTML)
+    
+    ; Native styled close button at the bottom
+    Local $idCloseBtn = GUICtrlCreateButton("Close Help Guide", 200, 492, 200, 32)
+    GUICtrlSetBkColor($idCloseBtn, 0x1E1E1E) ; Dark slate button background
     GUICtrlSetColor($idCloseBtn, 0xFFFFFF)
-    GUICtrlSetFont($idCloseBtn, 9, 600, 0, "Segoe UI")
+    GUICtrlSetFont($idCloseBtn, 10, 600, 0, "Segoe UI")
     
-    $bHelpClosed = False
+    ; Setup events for borderless GUI
     GUISetOnEvent(-3, "_HelpGUI_Close", $hHelpGUI) ; -3 is $GUI_EVENT_CLOSE
     GUICtrlSetOnEvent($idCloseBtn, "_HelpGUI_Close")
     
     GUISetState(@SW_SHOW, $hHelpGUI)
-    
-    While Not $bHelpClosed And WinExists($hHelpGUI)
-        Sleep(50)
-    WEnd
-    
-    GUIDelete($hHelpGUI)
 EndFunc
 
 Func _HelpGUI_Close()
-    $bHelpClosed = True
+    GUIDelete($hHelpGUI)
+    $hHelpGUI = 0
 EndFunc
 
 Func _OnShortcut()

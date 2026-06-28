@@ -50,7 +50,7 @@
 - [x] Map Insert to create a new tab of selected window.
 - [x] Map Right Arrow to bring deepest sibling window to the top.
 - [x] Map Left Arrow to push top window to bottom of sibling Z-order and bring next sibling to top.
-- [x] Redesign Help Dialog to be a gorgeous custom GUI window with rich text Consolas formatting.
+- [x] Redesign Help Dialog to be a gorgeous borderless embedded-HTML window with professional dark theme styling.
 - [x] Refactor all white background elements of the main UI into medium grey.
 
 ## 🔄 New Changes
