@@ -44,6 +44,14 @@
 - [x] Return focus to the manager UI upon closing or minimizing a browser window.
 - [x] Design a wider (700px) layout with a sleek low-glare dark visual theme.
 - [x] Implement collision-aware grid placement algorithm (swaps on occupied, backward scans 9 down to 1, or offset overlays by 30px).
+- [x] Ensure window comes to the top of the Z-order when orange border is applied, and returns to its original Z-index when border is removed.
+- [x] Map Page Down and Page Up to select next and previous tabs of selected window.
+- [x] Map Delete to close the selected window's current tab.
+- [x] Map Insert to create a new tab of selected window.
+- [x] Map Right Arrow to bring deepest sibling window to the top.
+- [x] Map Left Arrow to push top window to bottom of sibling Z-order and bring next sibling to top.
+- [x] Redesign Help Dialog to be a gorgeous custom GUI window with rich text Consolas formatting.
+- [x] Refactor all white background elements of the main UI into medium grey.
 
 ## 🔄 New Changes
 [[#^toc-changes|TOC]]

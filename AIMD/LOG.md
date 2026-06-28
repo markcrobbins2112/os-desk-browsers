@@ -25,17 +25,45 @@
 ## 💾 Commit Message
 [[#^toc-commit|TOC]]
 ```text
-feat: implement grid collision snapping with swaps, dark theme, and focus feedback
+feat: implement dynamic z-order restoration, tab/sibling navigation hotkeys, rich-text custom help GUI, and medium grey theme
 
-- Widen GUI to 700px and implemented a complete professional, low-glare dark visual theme.
-- Fixed the ListView focus check to correctly activate focus highlights and orange window borders.
-- Implemented a collision-aware grid layout snapping algorithm with back-seeking available slots and 30px offset fail-safes.
-- Added dynamic selection change audio beeps (1000Hz) and focus restore on window minimizes/closes.
-- Mapped Enter hotkey to launch or activate selected browser window.
+- Encapsulated Z-index promotion and precise previous sibling restoration inside _DrawOrangeBorder and _ClearOrangeBorder.
+- Mapped PageUp and PageDown keys to select next and previous browser tabs.
+- Mapped Delete to close the current tab of the selected browser window.
+- Mapped Insert to create a new tab for the selected browser window.
+- Mapped Right Arrow to bring the deepest sibling window of the selected browser to the top.
+- Mapped Left Arrow to push the current top browser window to the bottom of sibling Z-order and bring the next sibling to top.
+- Replaced the simple MsgBox help with a custom-designed, styled, and media-rich dark themed help GUI.
+- Refactored the main UI background and header controls to a highly professional, low-glare medium grey theme (0x2D2D2D/0x3D3D3D).
 ```
 
 ## 📝 Log Entries
 [[#^toc-entries|TOC]]
+
+### 📅 [2026-06-28T00:22:00-07:00]
+#### 🎯 Primary Goals & Requirements
+- Restore the original Z-order position when the orange border is removed.
+- Map Page Up / Page Down to select previous / next tabs.
+- Map Delete to close the current browser tab.
+- Map Insert to create a new browser tab.
+- Map Right Arrow to bring the deepest browser sibling window to the top.
+- Map Left Arrow to push the top browser window to the bottom of the sibling Z-order and bring the next sibling to top.
+- Design a rich, gorgeous custom help GUI.
+- Convert any white background elements of the main UI into medium grey.
+
+#### 🛠️ Completed Changes in this Session
+- Refactored `_DrawOrangeBorder` and `_ClearOrangeBorder` to dynamically track the target window's original Z-index sibling (`_WinAPI_GetWindow` using `GW_HWNDPREV` (3)) and restore it perfectly when the border is cleared.
+- Registered `{INS}`, `{DEL}`, `{RIGHT}`, and `{LEFT}` hotkeys in the accelerator map, bound to dedicated Dummy controls and event handlers.
+- Implemented `_OnDeletePressed()`, sending `^w` to close the selected window's active tab.
+- Implemented `_OnRightPressed()`, locating the deepest sibling in the matching browser window list and promoting it to the top.
+- Implemented `_OnLeftPressed()`, pushing the current top window immediately behind the deepest sibling in the Z-order and promoting the next sibling window to the top.
+- Replaced the simple text `MsgBox` help dialog with a beautiful custom GUI `_ShowHelp()` styled in `0x1E1E1E`/`0x2D2D2D` with formatted Consolas keyboard instructions.
+- Styled the main GUI background to `0x2D2D2D` (medium grey), changed the help button background to `0x3D3D3D`, and made label backgrounds transparent to form a seamless professional theme.
+
+#### 🔸 Affected Files
+- `/desk-browsers.au3`
+
+---
 
 ### 📅 [2026-06-27T17:05:00-07:00]
 #### 🎯 Primary Goals & Requirements

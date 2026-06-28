@@ -102,14 +102,15 @@ $iBrowserCount = UBound($aBrowsers, 1)
 ; USER INTERFACE SETUP
 ; ==============================================================================
 $hGUI = GUICreate("Browser Manager", 700, 320, -1, -1, BitOR($WS_OVERLAPPEDWINDOW, $WS_CLIPSIBLINGS), $WS_EX_TOPMOST)
-GUISetBkColor(0x1E1E1E, $hGUI) ; Sleek dark background
+GUISetBkColor(0x2D2D2D, $hGUI) ; Sleek medium grey background
 
 Local $idTitleLabel = GUICtrlCreateLabel("Keys: Letter (Act) | Ctrl+Letter (Close) | Alt+Letter (Focus) | Esc (Min) | - (Min Toggle) | Backspace (To Back)", 10, 12, 580, 20)
 GUICtrlSetColor($idTitleLabel, 0xE0E0E0) ; Light gray text
+GUICtrlSetBkColor($idTitleLabel, -2) ; Transparent background
 
 ; Help Button UI Placement
 $idHelpBtn = GUICtrlCreateButton("Help / Shortcuts", 600, 8, 90, 24)
-GUICtrlSetBkColor($idHelpBtn, 0x2D2D2D) ; Dark button background
+GUICtrlSetBkColor($idHelpBtn, 0x3D3D3D) ; Medium grey button background
 GUICtrlSetColor($idHelpBtn, 0xFFFFFF)  ; White text
 GUICtrlSetOnEvent($idHelpBtn, "_ShowHelp")
 
@@ -143,6 +144,7 @@ Next
 
 $idStatus = GUICtrlCreateLabel("Ready", 10, 280, 680, 20)
 GUICtrlSetColor($idStatus, 0x858585) ; Muted gray text
+GUICtrlSetBkColor($idStatus, -2) ; Transparent background
 
 ; Force system tray parameters active
 TraySetState(1)
@@ -174,12 +176,18 @@ $idDummyEscape = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyEscape, "_MinimizeToTray")
 $idDummyInsert = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyInsert, "_OnNewTab")
+$idDummyDelete = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyDelete, "_OnDeletePressed")
 $idDummyPageUp = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyPageUp, "_OnTabLeft")
 $idDummyPageDown = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyPageDown, "_OnTabRight")
 $idDummySiblingUp = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummySiblingUp, "_OnSiblingsToTop")
+$idDummyRight = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyRight, "_OnRightPressed")
+$idDummyLeft = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyLeft, "_OnLeftPressed")
 $idDummyCopyUrl = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyCopyUrl, "_OnCopyUrl")
 $idDummySendToBack = GUICtrlCreateDummy()
@@ -248,8 +256,12 @@ $aAccelKeys[$idx][0] = "{ESC}"
 $aAccelKeys[$idx][1] = $idDummyEscape
 $idx += 1
 
-$aAccelKeys[$idx][0] = "+{INS}"
+$aAccelKeys[$idx][0] = "{INS}"
 $aAccelKeys[$idx][1] = $idDummyInsert
+$idx += 1
+
+$aAccelKeys[$idx][0] = "{DEL}"
+$aAccelKeys[$idx][1] = $idDummyDelete
 $idx += 1
 
 $aAccelKeys[$idx][0] = "{PGUP}"
@@ -266,6 +278,14 @@ $idx += 1
 
 $aAccelKeys[$idx][0] = "!{PGDN}"
 $aAccelKeys[$idx][1] = $idDummySiblingUp
+$idx += 1
+
+$aAccelKeys[$idx][0] = "{RIGHT}"
+$aAccelKeys[$idx][1] = $idDummyRight
+$idx += 1
+
+$aAccelKeys[$idx][0] = "{LEFT}"
+$aAccelKeys[$idx][1] = $idDummyLeft
 $idx += 1
 
 $aAccelKeys[$idx][0] = "^c"
@@ -359,14 +379,7 @@ Func _HandleZOrderSelection()
     EndIf
     
     If $bDeFocused Then
-        If $hLastSelectedWin <> 0 Then
-            If _WinAPI_IsWindow($hLastSelectedWin) Then
-                _WinAPI_SetWindowPos($hLastSelectedWin, $hLastPrevWin, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE))
-            EndIf
-            $hLastSelectedWin = 0
-            $hLastPrevWin = 0
-            _ClearOrangeBorder()
-        EndIf
+        _ClearOrangeBorder()
         If $iLastSelectionIndex <> -1 Then
             $iLastSelectionIndex = -1
             Beep(800, 100) ; Defocus beep
@@ -385,30 +398,12 @@ Func _HandleZOrderSelection()
     Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $aBrowsers[$iIdx][1] & "$]")
     If $aWinList[0][0] > 0 Then
         Local $hTargetWin = $aWinList[1][1] ; Highest window frame in Z-Order
-        If $hTargetWin <> $hLastSelectedWin Then
-            If $hLastSelectedWin <> 0 And _WinAPI_IsWindow($hLastSelectedWin) Then
-                _WinAPI_SetWindowPos($hLastSelectedWin, $hLastPrevWin, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE))
-            EndIf
-            $hLastSelectedWin = $hTargetWin
-            $hLastPrevWin = _WinAPI_GetWindow($hTargetWin, 3) ; GW_HWNDPREV (3)
-            
-            _WinAPI_SetWindowPos($hTargetWin, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE)) ; HWND_TOP = 0
-            _WinAPI_SetWindowPos($hGUI, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE)) ; Keep Manager above it
-        EndIf
-        
         If BitAND(WinGetState($hTargetWin), 2) And Not BitAND(WinGetState($hTargetWin), 16) Then
             _DrawOrangeBorder($hTargetWin)
         Else
             _ClearOrangeBorder()
         EndIf
     Else
-        If $hLastSelectedWin <> 0 Then
-            If _WinAPI_IsWindow($hLastSelectedWin) Then
-                _WinAPI_SetWindowPos($hLastSelectedWin, $hLastPrevWin, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE))
-            EndIf
-            $hLastSelectedWin = 0
-            $hLastPrevWin = 0
-        EndIf
         _ClearOrangeBorder()
     EndIf
 EndFunc
@@ -646,8 +641,25 @@ EndFunc
 ; ==============================================================================
 
 Func _DrawOrangeBorder($hTarget)
+    If Not _WinAPI_IsWindow($hTarget) Then Return
     Local $aPos = WinGetPos($hTarget)
     If Not IsArray($aPos) Then Return
+    
+    ; Promote window to the top of Z-index, saving original position if not already tracked
+    If $hLastSelectedWin <> $hTarget Then
+        If $hLastSelectedWin <> 0 And _WinAPI_IsWindow($hLastSelectedWin) Then
+            Local $hInsertAfter = $hLastPrevWin
+            If Not _WinAPI_IsWindow($hInsertAfter) Then $hInsertAfter = 1 ; HWND_BOTTOM if previous sibling is gone
+            _WinAPI_SetWindowPos($hLastSelectedWin, $hInsertAfter, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE))
+        EndIf
+        $hLastSelectedWin = $hTarget
+        $hLastPrevWin = _WinAPI_GetWindow($hTarget, 3) ; GW_HWNDPREV = 3
+        
+        _WinAPI_SetWindowPos($hTarget, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE)) ; HWND_TOP = 0
+        If $bGUI_Visible Then
+            _WinAPI_SetWindowPos($hGUI, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE)) ; Keep Manager above it
+        EndIf
+    EndIf
     
     If $hBorderWin = 0 Then
         $hBorderWin = GUICreate("", $aPos[2], $aPos[3], $aPos[0], $aPos[1], $WS_POPUP, BitOR($WS_EX_LAYERED, $WS_EX_TRANSPARENT, $WS_EX_TOPMOST))
@@ -673,6 +685,15 @@ Func _DrawOrangeBorder($hTarget)
 EndFunc
 
 Func _ClearOrangeBorder()
+    If $hLastSelectedWin <> 0 Then
+        If _WinAPI_IsWindow($hLastSelectedWin) Then
+            Local $hInsertAfter = $hLastPrevWin
+            If Not _WinAPI_IsWindow($hInsertAfter) Then $hInsertAfter = 1 ; HWND_BOTTOM if previous sibling is gone
+            _WinAPI_SetWindowPos($hLastSelectedWin, $hInsertAfter, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE))
+        EndIf
+        $hLastSelectedWin = 0
+        $hLastPrevWin = 0
+    EndIf
     If $hBorderWin <> 0 Then
         GUIDelete($hBorderWin)
         $hBorderWin = 0
@@ -720,27 +741,67 @@ EndFunc
 ; ==============================================================================
 
 Func _ShowHelp()
+    Local $hHelpGUI = GUICreate("Help / Shortcut Guide", 580, 480, -1, -1, BitOR($WS_CAPTION, $WS_SYSMENU), -1, $hGUI)
+    GUISetBkColor(0x1E1E1E, $hHelpGUI)
+    
+    Local $idHeader = GUICtrlCreateLabel("BROWSER MANAGER KEYBOARD SHORTCUTS", 20, 15, 540, 30)
+    GUICtrlSetFont($idHeader, 12, 800, 0, "Segoe UI")
+    GUICtrlSetColor($idHeader, 0xFF6600) ; Orange header
+    GUICtrlSetBkColor($idHeader, -2) ; $GUI_BKCOLOR_TRANSPARENT = -2
+    
+    Local $idSubHeader = GUICtrlCreateLabel("Master your desktop workspace with these key combinations.", 20, 40, 540, 20)
+    GUICtrlSetFont($idSubHeader, 9, 400, 2, "Segoe UI")
+    GUICtrlSetColor($idSubHeader, 0x858585)
+    GUICtrlSetBkColor($idSubHeader, -2) ; $GUI_BKCOLOR_TRANSPARENT = -2
+    
+    Local $idKeysEdit = GUICtrlCreateEdit("", 20, 70, 540, 350, BitOR($ES_READONLY, $ES_MULTILINE, $WS_VSCROLL))
+    GUICtrlSetBkColor($idKeysEdit, 0x2D2D2D) ; Medium grey background
+    GUICtrlSetColor($idKeysEdit, 0xE0E0E0) ; Light grey text
+    GUICtrlSetFont($idKeysEdit, 10, 400, 0, "Consolas")
+    
     Local $sHelpText = _
-        "Global Hotkeys (Works anywhere):" & @CRLF & _
-        "  • Win + ContextMenu Key : Show or Hide the Browser Manager window" & @CRLF & @CRLF & _
-        "Local Hotkeys (Works when Browser Manager is active):" & @CRLF & _
-        "  • Letter Key (B, C, E, V, F, P) : Activate or Launch targeted browser" & @CRLF & _
-        "  • Ctrl + Letter Key : Safely close highest open window of that browser" & @CRLF & _
-        "  • Alt + Letter Key : Highlight and focus that browser item in the list" & @CRLF & _
-        "  • Escape (Esc) : Instantly minimize Manager window to system tray" & @CRLF & _
-        "  • Ctrl + C : Copy active tab URL from selected browser to Clipboard" & @CRLF & _
-        "  • Minus (-) : Toggle minimize state on selected browser windows" & @CRLF & _
-        "  • Backspace : Send selected window frame to the back of the desktop" & @CRLF & @CRLF & _
-        "Window Grid Controls (Target must be selected in the list):" & @CRLF & _
-        "  • Keys 1 to 9 : Snap targeted browser window to a 3x3 desktop grid layout" & @CRLF & _
-        "  • Key 0 : Snap window to center (Makes it exactly 5/9 of screen width & height)" & @CRLF & _
-        "  • Ctrl + 1 to 9 : Swap position of center grid window with the specified slot window" & @CRLF & _
-        "  • Alt + PageUp/PageDown : Move ALL instances of selected browser to front" & @CRLF & @CRLF & _
-        "Tab Navigation (Target must be selected in the list):" & @CRLF & _
-        "  • Shift + Insert : Read text from Clipboard and open as a new web tab" & @CRLF & _
-        "  • PageUp / PageDown : Quickly scroll to the previous or next browser tab"
-
-    MsgBox(BitOR($MB_ICONINFORMATION, $MB_TOPMOST), "Keyboard Shortcut Guide", $sHelpText, 0, $hGUI)
+        " [GLOBAL HOTKEYS] (Works anywhere on system)" & @CRLF & _
+        "  • Win + AppsKey          : Toggle Browser Manager GUI visibility" & @CRLF & @CRLF & _
+        " [WORKSPACE NAVIGATION]" & @CRLF & _
+        "  • Letter Key (B/C/E/V/F/P): Activate or Launch targeted browser" & @CRLF & _
+        "  • Ctrl + Letter Key      : Safely close the top window of that browser" & @CRLF & _
+        "  • Alt + Letter Key       : Select and focus that browser item in list" & @CRLF & _
+        "  • Enter                  : Activate, restore, or launch selected browser" & @CRLF & _
+        "  • Escape (Esc)           : Minimize Manager window to system tray" & @CRLF & _
+        "  • Ctrl + C               : Copy current tab URL to Clipboard" & @CRLF & _
+        "  • Minus (-)              : Toggle minimize/restore on selected browser" & @CRLF & _
+        "  • Backspace              : Send selected window to back of Z-order" & @CRLF & @CRLF & _
+        " [TAB & SIBLING WINDOW NAVIGATION]" & @CRLF & _
+        "  • Page Up ({PGUP})       : Go to PREVIOUS tab of selected window" & @CRLF & _
+        "  • Page Down ({PGDN})     : Go to NEXT tab of selected window" & @CRLF & _
+        "  • Delete ({DEL})         : Close current tab of selected window (Ctrl+W)" & @CRLF & _
+        "  • Insert ({INS})         : Create a new tab (Ctrl+T) / clipboard launch" & @CRLF & _
+        "  • Right Arrow ({RIGHT})  : Bring deepest sibling of selected window to top" & @CRLF & _
+        "  • Left Arrow ({LEFT})    : Send current top window to bottom of its browser" & @CRLF & _
+        "                             siblings and bring next sibling to top" & @CRLF & @CRLF & _
+        " [DESKTOP GRID CONTROLS] (Applies to selected browser window)" & @CRLF & _
+        "  • Keys 1 to 9            : Snap window to 3x3 layout (1=top-left, 9=bottom-right)" & @CRLF & _
+        "  • Key 0                  : Center window (occupies 5/9th screen area)" & @CRLF & _
+        "  • Ctrl + 1 to 9          : Swap current center slot (5) window with target slot" & @CRLF & _
+        "  • Alt + PageUp/PageDown  : Bring ALL instances of selected browser to front"
+        
+    GUICtrlSetData($idKeysEdit, $sHelpText)
+    
+    Local $idCloseBtn = GUICtrlCreateButton("Close", 240, 432, 100, 28)
+    GUICtrlSetBkColor($idCloseBtn, 0x2D2D2D) ; Medium grey button background
+    GUICtrlSetColor($idCloseBtn, 0xFFFFFF)
+    GUICtrlSetFont($idCloseBtn, 9, 600, 0, "Segoe UI")
+    
+    GUISetState(@SW_SHOW, $hHelpGUI)
+    
+    While 1
+        Local $aMsg = GUIGetMsg(1)
+        If $aMsg[1] = $hHelpGUI Then
+            If $aMsg[0] = $GUI_EVENT_CLOSE Or $aMsg[0] = $idCloseBtn Then ExitLoop
+        EndIf
+    WEnd
+    
+    GUIDelete($hHelpGUI)
 EndFunc
 
 Func _OnShortcut()
@@ -765,6 +826,68 @@ Func _OnEnterPressed()
     Local $iSelected = _GUICtrlListView_GetSelectedIndices($idListview)
     If $iSelected <> "" Then
         _HandleAction(Int($iSelected), False)
+    EndIf
+EndFunc
+
+Func _OnDeletePressed()
+    Local $hWnd = _GetSelectedBrowserWindow()
+    If $hWnd Then
+        WinActivate($hWnd)
+        ControlSend($hWnd, "", "", "^w")
+        WinActivate($hGUI)
+        GUICtrlSetData($idStatus, "Closed active tab of selected browser window")
+    EndIf
+EndFunc
+
+Func _OnRightPressed()
+    Local $iSelected = _GUICtrlListView_GetSelectedIndices($idListview)
+    If $iSelected = "" Then Return
+    Local $iIdx = Int($iSelected)
+    Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $aBrowsers[$iIdx][1] & "$]")
+    Local $aVisibleWins[100]
+    Local $iCount = 0
+    For $i = 1 To $aWinList[0][0]
+        If BitAND(WinGetState($aWinList[$i][1]), 2) And Not BitAND(WinGetState($aWinList[$i][1]), 16) Then
+            $aVisibleWins[$iCount] = $aWinList[$i][1]
+            $iCount += 1
+        EndIf
+    Next
+    If $iCount > 1 Then
+        Local $hDeepestWin = $aVisibleWins[$iCount - 1]
+        _WinAPI_SetWindowPos($hDeepestWin, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE)) ; HWND_TOP = 0
+        _WinAPI_SetWindowPos($hGUI, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE)) ; Keep Manager above it
+        _DrawOrangeBorder($hDeepestWin)
+        GUICtrlSetData($idStatus, "Brought deepest sibling window to top")
+    EndIf
+EndFunc
+
+Func _OnLeftPressed()
+    Local $iSelected = _GUICtrlListView_GetSelectedIndices($idListview)
+    If $iSelected = "" Then Return
+    Local $iIdx = Int($iSelected)
+    Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $aBrowsers[$iIdx][1] & "$]")
+    Local $aVisibleWins[100]
+    Local $iCount = 0
+    For $i = 1 To $aWinList[0][0]
+        If BitAND(WinGetState($aWinList[$i][1]), 2) And Not BitAND(WinGetState($aWinList[$i][1]), 16) Then
+            $aVisibleWins[$iCount] = $aWinList[$i][1]
+            $iCount += 1
+        EndIf
+    Next
+    If $iCount > 1 Then
+        Local $hCurrentTop = $aVisibleWins[0]
+        Local $hNextTop = $aVisibleWins[1]
+        Local $hDeepest = $aVisibleWins[$iCount - 1]
+        
+        ; Put current top window after the deepest window in Z-order
+        _WinAPI_SetWindowPos($hCurrentTop, $hDeepest, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE))
+        
+        ; Bring the next top window to HWND_TOP = 0
+        _WinAPI_SetWindowPos($hNextTop, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE))
+        _WinAPI_SetWindowPos($hGUI, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE)) ; Keep Manager above it
+        
+        _DrawOrangeBorder($hNextTop)
+        GUICtrlSetData($idStatus, "Pushed top window behind deepest sibling, brought next to top")
     EndIf
 EndFunc
 
