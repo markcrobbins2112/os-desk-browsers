@@ -2,5 +2,7 @@
   "name": "OS Desk Browsers",
   "description": "Multi-window advanced window tiling grid manager and browser selector for AutoIt v3",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

@@ -42,6 +42,10 @@ Global $aDummyFocus[7]
 Global $aDummyGrid[10] ; 0-9 hotkeys
 Global $aDummySwap[9]   ; 1-9 swap hotkeys
 Global $aDummyFocusGrid[10] ; Alt + 0-9 focus hotkeys
+Global $aDummyCloseGrid[10] ; ctrl+0-9 close grid hotkeys
+Global $aDummyIndicateGrid[10] ; alt+0-9 indicate grid hotkeys
+Global $aDummyNewTabInBrowser[7] ; shift+BCEVFOP hotkeys
+Global $aCommonKeys[32][2] ; common browser key forwarding map
 Global $aIconIndices[7]
 
 Global $idDummyEscape
@@ -52,12 +56,28 @@ Global $idDummyPageDown
 Global $idDummySiblingUp
 Global $idDummyRight
 Global $idDummyLeft
+Global $idDummyUp
+Global $idDummyDown
 Global $idDummyCycleNext
 Global $idDummyCyclePrev
 Global $idDummyCopyUrl
 Global $idDummySendToBack
 Global $idDummyMinimizeToggle
 Global $idDummyEnter
+Global $idDummyPrevInList
+Global $idDummyNextInList
+Global $idDummyCascadeType
+Global $idDummySplitTabs
+Global $idDummyGatherTabs
+Global $idDummyCopyUrlAndCloseTab
+Global $idDummyIndicatedToBackType
+Global $idDummyDeepestToTopType
+Global $idDummyPrevSibling
+Global $idDummyNextSibling
+Global $idDummyAltDown
+Global $idDummyAltUp
+Global $idDummyIndicateLastOnGrid
+Global $idDummyIndicateFirstOnGrid
 Global $bHelpClosed = False
 Global $hHelpGUI = 0
 
@@ -185,14 +205,16 @@ TraySetState(1)
 ; ==============================================================================
 ; DUMMY EVENT REGISTER & SHORTCUT ACCELERATORS
 ; ==============================================================================
-; Initialize browser-specific tracking dummys
+; Initialize browser-specific tracking dummys and shift-launch dummys
 For $i = 0 To $iBrowserCount - 1
     $aDummyActivate[$i] = GUICtrlCreateDummy()
     $aDummyClose[$i] = GUICtrlCreateDummy()
     $aDummyFocus[$i] = GUICtrlCreateDummy()
+    $aDummyNewTabInBrowser[$i] = GUICtrlCreateDummy()
     GUICtrlSetOnEvent($aDummyActivate[$i], "_OnShortcut")
     GUICtrlSetOnEvent($aDummyClose[$i], "_OnShortcut")
     GUICtrlSetOnEvent($aDummyFocus[$i], "_OnShortcut")
+    GUICtrlSetOnEvent($aDummyNewTabInBrowser[$i], "_OnNewTabInBrowserType")
 Next
 
 ; Establish grid layouts dummies
@@ -203,10 +225,22 @@ For $i = 0 To 9
     GUICtrlSetOnEvent($aDummyFocusGrid[$i], "_OnFocusGridHotkey")
     $aDummyGridNewTab[$i] = GUICtrlCreateDummy()
     GUICtrlSetOnEvent($aDummyGridNewTab[$i], "_OnNewTabAtGridHotkey")
+    $aDummyCloseGrid[$i] = GUICtrlCreateDummy()
+    GUICtrlSetOnEvent($aDummyCloseGrid[$i], "_OnCloseGridHotkey")
+    $aDummyIndicateGrid[$i] = GUICtrlCreateDummy()
+    GUICtrlSetOnEvent($aDummyIndicateGrid[$i], "_OnIndicateGridHotkey")
 Next
-For $i = 1 To 9
-    $aDummySwap[$i-1] = GUICtrlCreateDummy()
-    GUICtrlSetOnEvent($aDummySwap[$i-1], "_OnSwapHotkey")
+
+; Setup Common Browser Keys Forwarding Map
+Local $aKeysToMap[32] = [ _
+    "^t", "^+t", "^{F4}", "^{TAB}", "^+{TAB}", "^{PGUP}", "^{PGDN}", "^+{PGUP}", "^+{PGDN}", _
+    "^0", "^=", "^-", "^n", "^+n", "^d", "{PGDN}", "{PGUP}", "{BACKSPACE}", "+{BACKSPACE}", _
+    "!{LEFT}", "!{RIGHT}", "{HOME}", "{END}", "^1", "^2", "^3", "^4", "^5", "^6", "^7", "^8", "^9" _
+]
+For $i = 0 To 31
+    $aCommonKeys[$i][0] = GUICtrlCreateDummy()
+    $aCommonKeys[$i][1] = $aKeysToMap[$i]
+    GUICtrlSetOnEvent($aCommonKeys[$i][0], "_OnCommonKey")
 Next
 
 $idDummyEscape = GUICtrlCreateDummy()
@@ -215,20 +249,14 @@ $idDummyInsert = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyInsert, "_OnInsertPressed")
 $idDummyDelete = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyDelete, "_OnDeletePressed")
-$idDummyPageUp = GUICtrlCreateDummy()
-GUICtrlSetOnEvent($idDummyPageUp, "_OnTabLeft")
-$idDummyPageDown = GUICtrlCreateDummy()
-GUICtrlSetOnEvent($idDummyPageDown, "_OnTabRight")
-$idDummySiblingUp = GUICtrlCreateDummy()
-GUICtrlSetOnEvent($idDummySiblingUp, "_OnSiblingsToTop")
-$idDummyRight = GUICtrlCreateDummy()
-GUICtrlSetOnEvent($idDummyRight, "_OnRightPressed")
+$idDummyUp = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyUp, "_OnIndicatePrevInList")
+$idDummyDown = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyDown, "_OnIndicateNextInList")
 $idDummyLeft = GUICtrlCreateDummy()
-GUICtrlSetOnEvent($idDummyLeft, "_OnLeftPressed")
-$idDummyCycleNext = GUICtrlCreateDummy()
-GUICtrlSetOnEvent($idDummyCycleNext, "_OnCycleNext")
-$idDummyCyclePrev = GUICtrlCreateDummy()
-GUICtrlSetOnEvent($idDummyCyclePrev, "_OnCyclePrev")
+GUICtrlSetOnEvent($idDummyLeft, "_OnIndicatePrevInList")
+$idDummyRight = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyRight, "_OnIndicateNextInList")
 $idDummyCopyUrl = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyCopyUrl, "_OnCopyUrl")
 $idDummySendToBack = GUICtrlCreateDummy()
@@ -238,10 +266,35 @@ GUICtrlSetOnEvent($idDummyMinimizeToggle, "_OnMinimizeToggle")
 $idDummyEnter = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyEnter, "_OnEnterPressed")
 
-$idDummyMoveTabLeft = GUICtrlCreateDummy()
-GUICtrlSetOnEvent($idDummyMoveTabLeft, "_OnMoveTabLeft")
-$idDummyMoveTabRight = GUICtrlCreateDummy()
-GUICtrlSetOnEvent($idDummyMoveTabRight, "_OnMoveTabRight")
+$idDummyPrevInList = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyPrevInList, "_OnIndicatePrevInList")
+$idDummyNextInList = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyNextInList, "_OnIndicateNextInList")
+$idDummyCascadeType = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyCascadeType, "_OnCascadeIndicatedType")
+$idDummySplitTabs = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummySplitTabs, "_OnSplitAllTabs")
+$idDummyGatherTabs = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyGatherTabs, "_OnGatherAllTabs")
+$idDummyCopyUrlAndCloseTab = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyCopyUrlAndCloseTab, "_OnCopyUrlAndCloseTab")
+$idDummyIndicatedToBackType = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyIndicatedToBackType, "_OnIndicatedToBackType")
+$idDummyDeepestToTopType = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyDeepestToTopType, "_OnDeepestToTopType")
+$idDummyPrevSibling = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyPrevSibling, "_OnPrevSiblingOfType")
+$idDummyNextSibling = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyNextSibling, "_OnNextSiblingOfType")
+$idDummyAltDown = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyAltDown, "_OnAltDownPressed")
+$idDummyAltUp = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyAltUp, "_OnAltUpPressed")
+$idDummyIndicateLastOnGrid = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyIndicateLastOnGrid, "_OnIndicateLastOnGrid")
+$idDummyIndicateFirstOnGrid = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyIndicateFirstOnGrid, "_OnIndicateFirstOnGrid")
+
 $idDummyNewTabWithClipboard = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyNewTabWithClipboard, "_OnNewTabWithClipboard")
 $idDummyNewWindowWithCurrentUrl = GUICtrlCreateDummy()
@@ -268,77 +321,93 @@ GUICtrlSetOnEvent($idDummyBack, "_OnBack")
 $idDummyForward = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyForward, "_OnForward")
 
-Local $aAccelKeys[150][2]
+Local $aAccelKeys[250][2]
 Local $idx = 0
 
-; 1. Map Browser Launch, Close, and Focus binds (handling both lower & upper case letters to prevent Shift/Capslock issues)
+; 1. Map Browser Launch, Close, Focus, and New Tab binds (handling lower & upper case letters)
 For $i = 0 To $iBrowserCount - 1
-    Local $sL = StringLower($aBrowsers[$i][4]) ; Targets the unique character suffix letter
+    Local $sL = StringLower($aBrowsers[$i][4])
     Local $sU = StringUpper($aBrowsers[$i][4])
     
+    ; activate or launch indicated: BCEVFOP
     $aAccelKeys[$idx][0] = $sL
     $aAccelKeys[$idx][1] = $aDummyActivate[$i]
     $idx += 1
-    
     If $sL <> $sU Then
         $aAccelKeys[$idx][0] = $sU
         $aAccelKeys[$idx][1] = $aDummyActivate[$i]
         $idx += 1
     EndIf
     
+    ; close nearest z-index window: ctrl+BCEVFOP
     $aAccelKeys[$idx][0] = "^" & $sL
     $aAccelKeys[$idx][1] = $aDummyClose[$i]
     $idx += 1
-    
     If $sL <> $sU Then
         $aAccelKeys[$idx][0] = "^" & $sU
         $aAccelKeys[$idx][1] = $aDummyClose[$i]
         $idx += 1
     EndIf
     
+    ; indicate window: alt+BCEVFOP
     $aAccelKeys[$idx][0] = "!" & $sL
     $aAccelKeys[$idx][1] = $aDummyFocus[$i]
     $idx += 1
-    
     If $sL <> $sU Then
         $aAccelKeys[$idx][0] = "!" & $sU
         $aAccelKeys[$idx][1] = $aDummyFocus[$i]
         $idx += 1
     EndIf
+
+    ; new tab in destination with url of current: shift+BCEVFOP
+    $aAccelKeys[$idx][0] = "+" & $sL
+    $aAccelKeys[$idx][1] = $aDummyNewTabInBrowser[$i]
+    $idx += 1
+    If $sL <> $sU Then
+        $aAccelKeys[$idx][0] = "+" & $sU
+        $aAccelKeys[$idx][1] = $aDummyNewTabInBrowser[$i]
+        $idx += 1
+    EndIf
 Next
 
-; 2. Map Window 3x3 Tile Snapping grids (9 frames * 2 variations = 18 slots)
-For $i = 1 To 9
-    $aAccelKeys[$idx][0] = String($i)
-    $aAccelKeys[$idx][1] = $aDummyGrid[$i]
-    $idx += 1
+; 2. Map Window 3x3 Grid Controls (0-9 keys)
+For $i = 0 To 9
+    Local $sKey = String($i)
     
-    $aAccelKeys[$idx][0] = "^" & String($i)
-    $aAccelKeys[$idx][1] = $aDummySwap[$i-1]
-    $idx += 1
-    
-    $aAccelKeys[$idx][0] = "!" & String($i)
+    ; select browser on grid: 0-9
+    $aAccelKeys[$idx][0] = $sKey
     $aAccelKeys[$idx][1] = $aDummyFocusGrid[$i]
     $idx += 1
     
-    $aAccelKeys[$idx][0] = "^+" & String($i)
+    ; place selected browser on grid: shift+0-9
+    $aAccelKeys[$idx][0] = "+" & $sKey
+    $aAccelKeys[$idx][1] = $aDummyGrid[$i]
+    $idx += 1
+    
+    ; close browser on grid: ctrl+0-9
+    $aAccelKeys[$idx][0] = "^" & $sKey
+    $aAccelKeys[$idx][1] = $aDummyCloseGrid[$i]
+    $idx += 1
+    
+    ; indicate window on grid: alt+0-9
+    $aAccelKeys[$idx][0] = "!" & $sKey
+    $aAccelKeys[$idx][1] = $aDummyIndicateGrid[$i]
+    $idx += 1
+    
+    ; new tab in destination on grid with url of current: ctrl+shift+0-9
+    $aAccelKeys[$idx][0] = "^+" & $sKey
     $aAccelKeys[$idx][1] = $aDummyGridNewTab[$i]
     $idx += 1
 Next
 
-; 3. Map System and Utility hotkey rules (10 slots)
-$aAccelKeys[$idx][0] = "0"
-$aAccelKeys[$idx][1] = $aDummyGrid[0]
-$idx += 1
+; 3. Map Common Browser Key Forwarding Shortcuts
+For $i = 0 To 31
+    $aAccelKeys[$idx][0] = $aCommonKeys[$i][1]
+    $aAccelKeys[$idx][1] = $aCommonKeys[$i][0]
+    $idx += 1
+Next
 
-$aAccelKeys[$idx][0] = "!0"
-$aAccelKeys[$idx][1] = $aDummyFocusGrid[0]
-$idx += 1
-
-$aAccelKeys[$idx][0] = "^+0"
-$aAccelKeys[$idx][1] = $aDummyGridNewTab[0]
-$idx += 1
-
+; 4. Map Utility and List navigation hotkeys
 $aAccelKeys[$idx][0] = "{ESC}"
 $aAccelKeys[$idx][1] = $idDummyEscape
 $idx += 1
@@ -351,47 +420,11 @@ $aAccelKeys[$idx][0] = "{DEL}"
 $aAccelKeys[$idx][1] = $idDummyDelete
 $idx += 1
 
-$aAccelKeys[$idx][0] = "{PGUP}"
-$aAccelKeys[$idx][1] = $idDummyPageUp
-$idx += 1
-
-$aAccelKeys[$idx][0] = "{PGDN}"
-$aAccelKeys[$idx][1] = $idDummyPageDown
-$idx += 1
-
-$aAccelKeys[$idx][0] = "^{PGUP}"
-$aAccelKeys[$idx][1] = $idDummyCyclePrev
-$idx += 1
-
-$aAccelKeys[$idx][0] = "^{PGDN}"
-$aAccelKeys[$idx][1] = $idDummyCycleNext
-$idx += 1
-
-$aAccelKeys[$idx][0] = "^+{PGUP}"
-$aAccelKeys[$idx][1] = $idDummyMoveTabLeft
-$idx += 1
-
-$aAccelKeys[$idx][0] = "^+{PGDN}"
-$aAccelKeys[$idx][1] = $idDummyMoveTabRight
-$idx += 1
-
-$aAccelKeys[$idx][0] = "!{PGUP}"
-$aAccelKeys[$idx][1] = $idDummySiblingUp
-$idx += 1
-
-$aAccelKeys[$idx][0] = "!{PGDN}"
-$aAccelKeys[$idx][1] = $idDummySiblingUp
-$idx += 1
-
-$aAccelKeys[$idx][0] = "{RIGHT}"
-$aAccelKeys[$idx][1] = $idDummyRight
-$idx += 1
-
-$aAccelKeys[$idx][0] = "{LEFT}"
-$aAccelKeys[$idx][1] = $idDummyLeft
-$idx += 1
-
 $aAccelKeys[$idx][0] = "^c"
+$aAccelKeys[$idx][1] = $idDummyCopyUrl
+$idx += 1
+
+$aAccelKeys[$idx][0] = "^{INS}"
 $aAccelKeys[$idx][1] = $idDummyCopyUrl
 $idx += 1
 
@@ -401,6 +434,14 @@ $idx += 1
 
 $aAccelKeys[$idx][0] = "+{INS}"
 $aAccelKeys[$idx][1] = $idDummyNewTabWithClipboard
+$idx += 1
+
+$aAccelKeys[$idx][0] = "^x"
+$aAccelKeys[$idx][1] = $idDummyCopyUrlAndCloseTab
+$idx += 1
+
+$aAccelKeys[$idx][0] = "+{DEL}"
+$aAccelKeys[$idx][1] = $idDummyCopyUrlAndCloseTab
 $idx += 1
 
 $aAccelKeys[$idx][0] = "-"
@@ -423,6 +464,85 @@ $aAccelKeys[$idx][0] = "{F1}"
 $aAccelKeys[$idx][1] = $idDummyHelp
 $idx += 1
 
+; select browser relative to currently selected (wraps): up down right left
+$aAccelKeys[$idx][0] = "{UP}"
+$aAccelKeys[$idx][1] = $idDummyUp
+$idx += 1
+
+$aAccelKeys[$idx][0] = "{DOWN}"
+$aAccelKeys[$idx][1] = $idDummyDown
+$idx += 1
+
+$aAccelKeys[$idx][0] = "{LEFT}"
+$aAccelKeys[$idx][1] = $idDummyLeft
+$idx += 1
+
+$aAccelKeys[$idx][0] = "{RIGHT}"
+$aAccelKeys[$idx][1] = $idDummyRight
+$idx += 1
+
+; Additional keys: [, ], \, ctrl+\, shift+\
+$aAccelKeys[$idx][0] = "["
+$aAccelKeys[$idx][1] = $idDummyPrevInList
+$idx += 1
+
+$aAccelKeys[$idx][0] = "]"
+$aAccelKeys[$idx][1] = $idDummyNextInList
+$idx += 1
+
+$aAccelKeys[$idx][0] = "\"
+$aAccelKeys[$idx][1] = $idDummyCascadeType
+$idx += 1
+
+$aAccelKeys[$idx][0] = "^\"
+$aAccelKeys[$idx][1] = $idDummySplitTabs
+$idx += 1
+
+$aAccelKeys[$idx][0] = "+\"
+$aAccelKeys[$idx][1] = $idDummyGatherTabs
+$idx += 1
+
+; indicated to back of (types) zindex, indicate top zindex of type: alt+pageup
+$aAccelKeys[$idx][0] = "!{PGUP}"
+$aAccelKeys[$idx][1] = $idDummyIndicatedToBackType
+$idx += 1
+
+; indicate and bring to top zindex the types deepest zindex: alt+pagedown
+$aAccelKeys[$idx][0] = "!{PGDN}"
+$aAccelKeys[$idx][1] = $idDummyDeepestToTopType
+$idx += 1
+
+; indicate prev sibling of indicated type: shift+pageup
+$aAccelKeys[$idx][0] = "+{PGUP}"
+$aAccelKeys[$idx][1] = $idDummyPrevSibling
+$idx += 1
+
+; indicate next sibling of indicated type: shift+pagedown
+$aAccelKeys[$idx][0] = "+{PGDN}"
+$aAccelKeys[$idx][1] = $idDummyNextSibling
+$idx += 1
+
+; minimize: alt+down
+$aAccelKeys[$idx][0] = "!{DOWN}"
+$aAccelKeys[$idx][1] = $idDummyAltDown
+$idx += 1
+
+; restore: alt+up
+$aAccelKeys[$idx][0] = "!{UP}"
+$aAccelKeys[$idx][1] = $idDummyAltUp
+$idx += 1
+
+; indicate last on grid: alt+end
+$aAccelKeys[$idx][0] = "!{END}"
+$aAccelKeys[$idx][1] = $idDummyIndicateLastOnGrid
+$idx += 1
+
+; indicate first on grid: alt+home
+$aAccelKeys[$idx][0] = "!{HOME}"
+$aAccelKeys[$idx][1] = $idDummyIndicateFirstOnGrid
+$idx += 1
+
+; Spatial focus navigation (Ctrl+Arrows)
 $aAccelKeys[$idx][0] = "^{LEFT}"
 $aAccelKeys[$idx][1] = $idDummyIndicateLeft
 $idx += 1
@@ -437,22 +557,6 @@ $idx += 1
 
 $aAccelKeys[$idx][0] = "^{DOWN}"
 $aAccelKeys[$idx][1] = $idDummyIndicateDown
-$idx += 1
-
-$aAccelKeys[$idx][0] = "^="
-$aAccelKeys[$idx][1] = $idDummyZoomIn
-$idx += 1
-
-$aAccelKeys[$idx][0] = "^-"
-$aAccelKeys[$idx][1] = $idDummyZoomOut
-$idx += 1
-
-$aAccelKeys[$idx][0] = "!{LEFT}"
-$aAccelKeys[$idx][1] = $idDummyBack
-$idx += 1
-
-$aAccelKeys[$idx][0] = "!{RIGHT}"
-$aAccelKeys[$idx][1] = $idDummyForward
 $idx += 1
 
 ; ReDim the array to the exact count of mapped keys to avoid empty/unpopulated trailing rows which fail GUISetAccelerators
@@ -1025,89 +1129,85 @@ Func _ShowHelp()
         "        <table class='shortcut-table'>" & _
         "            <tr class='shortcut-row'>" & _
         "                <td class='shortcut-key'><kbd>B</kbd> / <kbd>C</kbd> / <kbd>E</kbd> / <kbd>V</kbd> / <kbd>F</kbd> / <kbd>O</kbd> / <kbd>P</kbd></td>" & _
-        "                <td class='shortcut-desc'>Activate or Launch targeted browser (Opera is O)</td>" & _
+        "                <td class='shortcut-desc'>Activate or Launch browser (Opera is O)</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>Letter</kbd></td>" & _
-        "                <td class='shortcut-desc'>Safely close the top window of that browser</td>" & _
+        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>BCEVFOP</kbd></td>" & _
+        "                <td class='shortcut-desc'>Close nearest browser window of type</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>Alt</kbd> + <kbd>Letter</kbd></td>" & _
-        "                <td class='shortcut-desc'>Select and focus that browser item in list</td>" & _
+        "                <td class='shortcut-key'><kbd>Alt</kbd> + <kbd>BCEVFOP</kbd></td>" & _
+        "                <td class='shortcut-desc'>Indicate/focus browser window of type</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Shift</kbd> + <kbd>BCEVFOP</kbd></td>" & _
+        "                <td class='shortcut-desc'>New tab in browser type with current URL</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
         "                <td class='shortcut-key'><kbd>Enter</kbd></td>" & _
-        "                <td class='shortcut-desc'>Activate, restore, or launch selected browser</td>" & _
+        "                <td class='shortcut-desc'>Activate or launch indicated browser</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
         "                <td class='shortcut-key'><kbd>Esc</kbd></td>" & _
-        "                <td class='shortcut-desc'>Minimize Manager window to system tray / Close Help</td>" & _
+        "                <td class='shortcut-desc'>Minimize Manager to tray / Close Help</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>C</kbd></td>" & _
-        "                <td class='shortcut-desc'>Copy current tab URL to Clipboard</td>" & _
+        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>C</kbd> / <kbd>Insert</kbd></td>" & _
+        "                <td class='shortcut-desc'>Copy URL of indicated window</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>&larr;</kbd> / <kbd>&rarr;</kbd> / <kbd>&uarr;</kbd> / <kbd>&darr;</kbd></td>" & _
-        "                <td class='shortcut-desc'>Indicate/focus browser window in that direction</td>" & _
+        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>V</kbd> / <kbd>Shift</kbd> + <kbd>Insert</kbd></td>" & _
+        "                <td class='shortcut-desc'>New tab in indicated with clipboard</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>=</kbd> / <kbd>-</kbd></td>" & _
-        "                <td class='shortcut-desc'>Zoom In / Zoom Out on indicated browser</td>" & _
+        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>X</kbd> / <kbd>Shift</kbd> + <kbd>Delete</kbd></td>" & _
+        "                <td class='shortcut-desc'>Copy URL of indicated and close tab</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>Alt</kbd> + <kbd>&larr;</kbd> / <kbd>&rarr;</kbd></td>" & _
-        "                <td class='shortcut-desc'>Navigate Back / Forward on indicated browser</td>" & _
+        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>&larr;</kbd>/<kbd>&rarr;</kbd>/<kbd>&uarr;</kbd>/<kbd>&darr;</kbd></td>" & _
+        "                <td class='shortcut-desc'>Indicate browser window in direction</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>-</kbd> (Minus)</td>" & _
-        "                <td class='shortcut-desc'>Toggle minimize/restore on selected browser</td>" & _
+        "                <td class='shortcut-key'><kbd>&larr;</kbd>/<kbd>&rarr;</kbd>/<kbd>&uarr;</kbd>/<kbd>&darr;</kbd></td>" & _
+        "                <td class='shortcut-desc'>Select browser relative to current (wraps)</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>Backspace</kbd></td>" & _
-        "                <td class='shortcut-desc'>Send selected window to back of Z-order</td>" & _
+        "                <td class='shortcut-key'><kbd>Alt</kbd> + <kbd>&uarr;</kbd> / <kbd>&darr;</kbd></td>" & _
+        "                <td class='shortcut-desc'>Restore / Minimize indicated window</td>" & _
         "            </tr>" & _
         "        </table>" & _
         "    </div>" & _
         "    " & _
         "    <div class='section'>" & _
-        "        <div class='section-title'>Tab & Sibling Window Navigation</div>" & _
+        "        <div class='section-title'>List, Tab & Stack Actions</div>" & _
         "        <table class='shortcut-table'>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>Page Up</kbd></td>" & _
-        "                <td class='shortcut-desc'>Go to <span class='highlight'>PREVIOUS</span> tab of selected window</td>" & _
+        "                <td class='shortcut-key'><kbd>[</kbd> / <kbd>]</kbd></td>" & _
+        "                <td class='shortcut-desc'>Indicate previous / next browser in list (wraps)</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>Page Down</kbd></td>" & _
-        "                <td class='shortcut-desc'>Go to <span class='highlight'>NEXT</span> tab of selected window</td>" & _
+        "                <td class='shortcut-key'><kbd>\</kbd></td>" & _
+        "                <td class='shortcut-desc'>Cascade all windows of indicated type</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Page Up/Dn</kbd></td>" & _
-        "                <td class='shortcut-desc'>Move current active tab Left or Right</td>" & _
+        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>\</kbd></td>" & _
+        "                <td class='shortcut-desc'>Split all tabs to new windows</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>Delete</kbd></td>" & _
-        "                <td class='shortcut-desc'>Close current tab of selected window (<kbd>Ctrl</kbd>+<kbd>W</kbd>)</td>" & _
+        "                <td class='shortcut-key'><kbd>Shift</kbd> + <kbd>\</kbd></td>" & _
+        "                <td class='shortcut-desc'>Gather all windows of type tabs to one window</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>Insert</kbd></td>" & _
-        "                <td class='shortcut-desc'>Create a blank new tab (<kbd>Ctrl</kbd>+<kbd>T</kbd>)</td>" & _
+        "                <td class='shortcut-key'><kbd>Alt</kbd> + <kbd>PageUp</kbd></td>" & _
+        "                <td class='shortcut-desc'>Indicated to back of stack, indicate top of type</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>V</kbd> / <kbd>Shift</kbd> + <kbd>Insert</kbd></td>" & _
-        "                <td class='shortcut-desc'>Open a new tab with the clipboard URL</td>" & _
+        "                <td class='shortcut-key'><kbd>Alt</kbd> + <kbd>PageDown</kbd></td>" & _
+        "                <td class='shortcut-desc'>Indicate and bring deepest window to top</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>Shift</kbd> + <kbd>Enter</kbd></td>" & _
-        "                <td class='shortcut-desc'>Create a new window with current tab URL</td>" & _
-        "            </tr>" & _
-        "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>&rarr;</kbd> (Right Arrow)</td>" & _
-        "                <td class='shortcut-desc'>Bring deepest sibling of selected window to top</td>" & _
-        "            </tr>" & _
-        "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>&larr;</kbd> (Left Arrow)</td>" & _
-        "                <td class='shortcut-desc'>Send current top window to bottom, bring next to top</td>" & _
+        "                <td class='shortcut-key'><kbd>Shift</kbd> + <kbd>PageUp/Dn</kbd></td>" & _
+        "                <td class='shortcut-desc'>Indicate previous / next sibling of type</td>" & _
         "            </tr>" & _
         "        </table>" & _
         "    </div>" & _
@@ -1116,24 +1216,28 @@ Func _ShowHelp()
         "        <div class='section-title'>Desktop Grid Controls</div>" & _
         "        <table class='shortcut-table'>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>1</kbd> to <kbd>9</kbd></td>" & _
-        "                <td class='shortcut-desc'>Snap window to 3x3 layout (1=top-left, 9=bottom-right)</td>" & _
+        "                <td class='shortcut-key'><kbd>0-9</kbd></td>" & _
+        "                <td class='shortcut-desc'>Select browser on grid (0 is Center)</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>0</kbd></td>" & _
-        "                <td class='shortcut-desc'>Center window (occupies 5/9th screen area)</td>" & _
+        "                <td class='shortcut-key'><kbd>Shift</kbd> + <kbd>0-9</kbd></td>" & _
+        "                <td class='shortcut-desc'>Place selected browser on grid position</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>1</kbd> to <kbd>9</kbd></td>" & _
-        "                <td class='shortcut-desc'>Swap current center slot (5) window with target slot</td>" & _
+        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>0-9</kbd></td>" & _
+        "                <td class='shortcut-desc'>Close browser window on grid position</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Alt</kbd> + <kbd>0-9</kbd></td>" & _
+        "                <td class='shortcut-desc'>Indicate window on grid position</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
         "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>0-9</kbd></td>" & _
-        "                <td class='shortcut-desc'>Open new tab at grid window with current window's URL</td>" & _
+        "                <td class='shortcut-desc'>Open new tab at grid position with current URL</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>Alt</kbd> + <kbd>PageUp/Dn</kbd></td>" & _
-        "                <td class='shortcut-desc'>Bring ALL instances of selected browser to front</td>" & _
+        "                <td class='shortcut-key'><kbd>Alt</kbd> + <kbd>Home/End</kbd></td>" & _
+        "                <td class='shortcut-desc'>Indicate first / last window on grid</td>" & _
         "            </tr>" & _
         "        </table>" & _
         "    </div>" & _
@@ -1619,7 +1723,7 @@ Func _OnTabLeft()
         Local $hActivePrev = WinGetHandle("[ACTIVE]")
         WinActivate($hWnd)
         Sleep(50)
-        Send("^+{TAB}")
+        Send("^{PGUP}")
         Sleep(50)
         If $hActivePrev Then WinActivate($hActivePrev)
         GUICtrlSetData($idStatus, "Switched to previous tab on indicated window")
@@ -1633,7 +1737,7 @@ Func _OnTabRight()
         Local $hActivePrev = WinGetHandle("[ACTIVE]")
         WinActivate($hWnd)
         Sleep(50)
-        Send("^{TAB}")
+        Send("^{PGDN}")
         Sleep(50)
         If $hActivePrev Then WinActivate($hActivePrev)
         GUICtrlSetData($idStatus, "Switched to next tab on indicated window")
@@ -1895,5 +1999,554 @@ Func _SendKeysToIndicated($sKeys, $sStatusMsg)
         Sleep(50)
         If $hActivePrev Then WinActivate($hActivePrev)
         If $sStatusMsg <> "" Then GUICtrlSetData($idStatus, $sStatusMsg)
+    EndIf
+EndFunc
+
+Func _OnCommonKey()
+    Local $idPressed = @GUI_CtrlId
+    Local $sKeyToSend = ""
+    For $i = 0 To 31
+        If $idPressed = $aCommonKeys[$i][0] Then
+            $sKeyToSend = $aCommonKeys[$i][1]
+            ExitLoop
+        EndIf
+    Next
+    If $sKeyToSend = "" Then Return
+    
+    Local $hWnd = $hLastSelectedWin
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
+    If Not $hWnd Then Return
+    
+    Local $hActivePrev = WinGetHandle("[ACTIVE]")
+    WinActivate($hWnd)
+    Sleep(50)
+    Send($sKeyToSend)
+    Sleep(50)
+    If $hActivePrev Then WinActivate($hActivePrev)
+    GUICtrlSetData($idStatus, "Forwarded common browser key: " & $sKeyToSend)
+EndFunc
+
+Func _OnIndicatePrevInList()
+    Local $iSelected = _GUICtrlListView_GetSelectedIndices($idListview)
+    Local $iIdx = 0
+    If $iSelected <> "" Then
+        $iIdx = Int($iSelected) - 1
+        If $iIdx < 0 Then $iIdx = $iBrowserCount - 1
+    Else
+        $iIdx = $iBrowserCount - 1
+    EndIf
+    _GUICtrlListView_SetItemSelected($idListview, $iIdx, True, True)
+    _GUICtrlListView_EnsureVisible($idListview, $iIdx)
+    ControlFocus($hGUI, "", $idListview)
+    Local $hWnd = _GetSelectedBrowserWindow()
+    If $hWnd Then
+        _IndicateBrowserWindow($hWnd, "Indicated " & $aBrowsers[$iIdx][0])
+    Else
+        _ClearOrangeBorder()
+        GUICtrlSetData($idStatus, "Selected " & $aBrowsers[$iIdx][0] & " (no running window)")
+    EndIf
+EndFunc
+
+Func _OnIndicateNextInList()
+    Local $iSelected = _GUICtrlListView_GetSelectedIndices($idListview)
+    Local $iIdx = 0
+    If $iSelected <> "" Then
+        $iIdx = Int($iSelected) + 1
+        If $iIdx >= $iBrowserCount Then $iIdx = 0
+    Else
+        $iIdx = 0
+    EndIf
+    _GUICtrlListView_SetItemSelected($idListview, $iIdx, True, True)
+    _GUICtrlListView_EnsureVisible($idListview, $iIdx)
+    ControlFocus($hGUI, "", $idListview)
+    Local $hWnd = _GetSelectedBrowserWindow()
+    If $hWnd Then
+        _IndicateBrowserWindow($hWnd, "Indicated " & $aBrowsers[$iIdx][0])
+    Else
+        _ClearOrangeBorder()
+        GUICtrlSetData($idStatus, "Selected " & $aBrowsers[$iIdx][0] & " (no running window)")
+    EndIf
+EndFunc
+
+Func _OnCascadeIndicatedType()
+    Local $iSelected = _GUICtrlListView_GetSelectedIndices($idListview)
+    If $iSelected = "" Then Return
+    Local $iIdx = Int($iSelected)
+    Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $aBrowsers[$iIdx][1] & "$]")
+    Local $iCount = 0
+    Local $iW = Int(@DesktopWidth * 0.6)
+    Local $iH = Int(@DesktopHeight * 0.6)
+    Local $iX = 50, $iY = 50
+    For $i = $aWinList[0][0] To 1 Step -1
+        Local $hWnd = $aWinList[$i][1]
+        If BitAND(WinGetState($hWnd), 2) And Not BitAND(WinGetState($hWnd), 16) Then
+            WinMove($hWnd, "", $iX, $iY, $iW, $iH)
+            _WinAPI_SetWindowPos($hWnd, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE))
+            $iX += 30
+            $iY += 30
+            $iCount += 1
+        EndIf
+    Next
+    If $iCount > 0 Then
+        GUICtrlSetData($idStatus, "Cascaded " & $iCount & " windows of " & $aBrowsers[$iIdx][0])
+        _PopulateList($aIconIndices)
+    Else
+        GUICtrlSetData($idStatus, "No running windows to cascade")
+    EndIf
+EndFunc
+
+Func _OnSplitAllTabs()
+    Local $hWnd = $hLastSelectedWin
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
+    If Not $hWnd Then
+        GUICtrlSetData($idStatus, "No active/indicated browser window to split")
+        Return
+    EndIf
+    
+    Local $hActivePrev = WinGetHandle("[ACTIVE]")
+    WinActivate($hWnd)
+    Sleep(100)
+    
+    Local $aUrls[20]
+    Local $iUrlCount = 0
+    Local $sOldClip = ClipGet()
+    
+    For $i = 1 To 15
+        ClipPut("")
+        Send("^l")
+        Sleep(80)
+        Send("^c")
+        Sleep(120)
+        Local $sUrl = ClipGet()
+        If $sUrl = "" Then ExitLoop
+        
+        Local $bDup = False
+        For $u = 0 To $iUrlCount - 1
+            If $aUrls[$u] = $sUrl Then
+                $bDup = True
+                ExitLoop
+            EndIf
+        Next
+        If $bDup Then ExitLoop
+        
+        $aUrls[$iUrlCount] = $sUrl
+        $iUrlCount += 1
+        If $iUrlCount >= 20 Then ExitLoop
+        
+        Send("^{PGDN}")
+        Sleep(100)
+    Next
+    
+    If $iUrlCount <= 1 Then
+        GUICtrlSetData($idStatus, "Only 1 tab or failed to detect multiple tabs")
+        ClipPut($sOldClip)
+        If $hActivePrev Then WinActivate($hActivePrev)
+        Return
+    EndIf
+    
+    WinClose($hWnd)
+    Sleep(300)
+    
+    Local $iSelected = _GUICtrlListView_GetSelectedIndices($idListview)
+    Local $iIdx = ($iSelected <> "") ? Int($iSelected) : 0
+    Local $sPath = $aBrowsers[$iIdx][2]
+    If FileExists($sPath) Then
+        For $u = 0 To $iUrlCount - 1
+            Local $sTargetUrl = $aUrls[$u]
+            Run('"' & $sPath & '" "' & $sTargetUrl & '"')
+            Sleep(400)
+        Next
+    EndIf
+    
+    ClipPut($sOldClip)
+    If $hActivePrev Then WinActivate($hActivePrev)
+    GUICtrlSetData($idStatus, "Split " & $iUrlCount & " tabs into separate windows")
+    _PopulateList($aIconIndices)
+EndFunc
+
+Func _OnGatherAllTabs()
+    Local $iSelected = _GUICtrlListView_GetSelectedIndices($idListview)
+    If $iSelected = "" Then Return
+    Local $iIdx = Int($iSelected)
+    Local $sSuffix = $aBrowsers[$iIdx][1]
+    Local $sPath = $aBrowsers[$iIdx][2]
+    
+    Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $sSuffix & "$]")
+    Local $aUrls[50]
+    Local $iUrlCount = 0
+    Local $sOldClip = ClipGet()
+    
+    For $i = 1 To $aWinList[0][0]
+        Local $hWnd = $aWinList[$i][1]
+        If BitAND(WinGetState($hWnd), 2) And Not BitAND(WinGetState($hWnd), 16) Then
+            WinActivate($hWnd)
+            Sleep(100)
+            ClipPut("")
+            Send("^l")
+            Sleep(80)
+            Send("^c")
+            Sleep(120)
+            Local $sUrl = ClipGet()
+            If $sUrl <> "" Then
+                $aUrls[$iUrlCount] = $sUrl
+                $iUrlCount += 1
+            EndIf
+            WinClose($hWnd)
+            Sleep(150)
+        EndIf
+    Next
+    
+    If $iUrlCount = 0 Then
+        GUICtrlSetData($idStatus, "No active browser windows of this type found")
+        ClipPut($sOldClip)
+        WinActivate($hGUI)
+        Return
+    EndIf
+    
+    If FileExists($sPath) Then
+        Run('"' & $sPath & '" "' & $aUrls[0] & '"')
+        Sleep(1200)
+        
+        Local $hNewWin = _GetSelectedBrowserWindow()
+        If $hNewWin Then
+            WinActivate($hNewWin)
+            Sleep(200)
+            For $u = 1 To $iUrlCount - 1
+                Send("^t")
+                Sleep(150)
+                ClipPut($aUrls[$u])
+                Send("^v")
+                Sleep(80)
+                Send("{ENTER}")
+                Sleep(150)
+            Next
+        EndIf
+    EndIf
+    
+    ClipPut($sOldClip)
+    WinActivate($hGUI)
+    GUICtrlSetData($idStatus, "Gathered " & $iUrlCount & " windows into one window")
+    _PopulateList($aIconIndices)
+EndFunc
+
+Func _OnCopyUrlAndCloseTab()
+    Local $hWnd = $hLastSelectedWin
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
+    If Not $hWnd Then Return
+    
+    Local $sOldClip = ClipGet()
+    ClipPut("")
+    Local $hActivePrev = WinGetHandle("[ACTIVE]")
+    WinActivate($hWnd)
+    Sleep(100)
+    Send("^l")
+    Sleep(100)
+    Send("^c")
+    Sleep(150)
+    Local $sUrl = ClipGet()
+    
+    If $sUrl <> "" Then
+        Send("^w")
+        Sleep(50)
+        GUICtrlSetData($idStatus, "Copied URL and closed tab: " & $sUrl)
+    Else
+        ClipPut($sOldClip)
+        GUICtrlSetData($idStatus, "Failed to copy URL")
+    EndIf
+    
+    If $hActivePrev Then WinActivate($hActivePrev)
+EndFunc
+
+Func _OnNewTabInBrowserType()
+    Local $idPressed = @GUI_CtrlId
+    Local $iTargetIdx = -1
+    For $i = 0 To $iBrowserCount - 1
+        If $idPressed = $aDummyNewTabInBrowser[$i] Then
+            $iTargetIdx = $i
+            ExitLoop
+        EndIf
+    Next
+    If $iTargetIdx = -1 Then Return
+    
+    Local $hCurrentWin = $hLastSelectedWin
+    If Not $hCurrentWin Or Not _WinAPI_IsWindow($hCurrentWin) Then $hCurrentWin = _GetSelectedBrowserWindow()
+    If Not $hCurrentWin Then
+        GUICtrlSetData($idStatus, "No current browser window to copy URL from")
+        Return
+    EndIf
+    
+    Local $sOldClip = ClipGet()
+    ClipPut("")
+    Local $hActivePrev = WinGetHandle("[ACTIVE]")
+    WinActivate($hCurrentWin)
+    Sleep(50)
+    Send("^l")
+    Sleep(100)
+    Send("^c")
+    Sleep(150)
+    Local $sUrl = ClipGet()
+    
+    If $sUrl <> "" Then
+        Local $sSuffix = $aBrowsers[$iTargetIdx][1]
+        Local $sPath = $aBrowsers[$iTargetIdx][2]
+        Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $sSuffix & "$]")
+        Local $hTargetWin = 0
+        For $w = 1 To $aWinList[0][0]
+            If BitAND(WinGetState($aWinList[$w][1]), 2) Then
+                $hTargetWin = $aWinList[$w][1]
+                ExitLoop
+            EndIf
+        Next
+        
+        If $hTargetWin <> 0 Then
+            WinActivate($hTargetWin)
+            Sleep(50)
+            Send("^t")
+            Sleep(150)
+            ClipPut($sUrl)
+            Send("^v")
+            Sleep(50)
+            Send("{ENTER}")
+            Sleep(50)
+            GUICtrlSetData($idStatus, "Opened URL in existing " & $aBrowsers[$iTargetIdx][0] & " window")
+        Else
+            If FileExists($sPath) Then
+                Run('"' & $sPath & '" "' & $sUrl & '"')
+                Sleep(400)
+                GUICtrlSetData($idStatus, "Launched " & $aBrowsers[$iTargetIdx][0] & " with URL")
+            EndIf
+        EndIf
+    Else
+        ClipPut($sOldClip)
+        GUICtrlSetData($idStatus, "Failed to copy URL from current window")
+    EndIf
+    
+    If $hActivePrev Then WinActivate($hActivePrev)
+    _PopulateList($aIconIndices)
+EndFunc
+
+Func _OnIndicatedToBackType()
+    Local $hWnd = $hLastSelectedWin
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
+    If Not $hWnd Then Return
+    
+    Local $sTitle = WinGetTitle($hWnd)
+    Local $iMatchIdx = -1
+    For $b = 0 To $iBrowserCount - 1
+        If StringInStr($sTitle, $aBrowsers[$b][1]) Then
+            $iMatchIdx = $b
+            ExitLoop
+        EndIf
+    Next
+    If $iMatchIdx = -1 Then Return
+    
+    Local $sSuffix = $aBrowsers[$iMatchIdx][1]
+    Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $sSuffix & "$]")
+    Local $aVisibleWins[100]
+    Local $iCount = 0
+    For $i = 1 To $aWinList[0][0]
+        If BitAND(WinGetState($aWinList[$i][1]), 2) And Not BitAND(WinGetState($aWinList[$i][1]), 16) Then
+            $aVisibleWins[$iCount] = $aWinList[$i][1]
+            $iCount += 1
+        EndIf
+    Next
+    
+    If $iCount > 1 Then
+        Local $hCurrentTop = $aVisibleWins[0]
+        Local $hDeepest = $aVisibleWins[$iCount - 1]
+        
+        _WinAPI_SetWindowPos($hCurrentTop, $hDeepest, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE))
+        
+        Local $hNewTop = $aVisibleWins[1]
+        _IndicateBrowserWindow($hNewTop, "Sent window to back of stack, indicated next of type")
+    EndIf
+EndFunc
+
+Func _OnDeepestToTopType()
+    Local $iSelected = _GUICtrlListView_GetSelectedIndices($idListview)
+    If $iSelected = "" Then Return
+    Local $iIdx = Int($iSelected)
+    Local $sSuffix = $aBrowsers[$iIdx][1]
+    Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $sSuffix & "$]")
+    Local $aVisibleWins[100]
+    Local $iCount = 0
+    For $i = 1 To $aWinList[0][0]
+        If BitAND(WinGetState($aWinList[$i][1]), 2) And Not BitAND(WinGetState($aWinList[$i][1]), 16) Then
+            $aVisibleWins[$iCount] = $aWinList[$i][1]
+            $iCount += 1
+        EndIf
+    Next
+    
+    If $iCount > 0 Then
+        Local $hDeepest = $aVisibleWins[$iCount - 1]
+        _WinAPI_SetWindowPos($hDeepest, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE))
+        _IndicateBrowserWindow($hDeepest, "Brought deepest " & $aBrowsers[$iIdx][0] & " window to top")
+    EndIf
+EndFunc
+
+Func _OnPrevSiblingOfType()
+    Local $hWnd = $hLastSelectedWin
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
+    If Not $hWnd Then Return
+    
+    Local $sTitle = WinGetTitle($hWnd)
+    Local $iMatchIdx = -1
+    For $b = 0 To $iBrowserCount - 1
+        If StringInStr($sTitle, $aBrowsers[$b][1]) Then
+            $iMatchIdx = $b
+            ExitLoop
+        EndIf
+    Next
+    If $iMatchIdx = -1 Then Return
+    
+    Local $sSuffix = $aBrowsers[$iMatchIdx][1]
+    Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $sSuffix & "$]")
+    Local $aVisibleWins[100]
+    Local $iCount = 0
+    Local $iCurrentIdx = -1
+    For $i = 1 To $aWinList[0][0]
+        Local $hW = $aWinList[$i][1]
+        If BitAND(WinGetState($hW), 2) And Not BitAND(WinGetState($hW), 16) Then
+            $aVisibleWins[$iCount] = $hW
+            If $hW = $hWnd Then $iCurrentIdx = $iCount
+            $iCount += 1
+        EndIf
+    Next
+    
+    If $iCount > 1 And $iCurrentIdx <> -1 Then
+        Local $iTarget = $iCurrentIdx - 1
+        If $iTarget < 0 Then $iTarget = $iCount - 1
+        Local $hTargetWin = $aVisibleWins[$iTarget]
+        _IndicateBrowserWindow($hTargetWin, "Indicated previous sibling window of " & $aBrowsers[$iMatchIdx][0])
+    EndIf
+EndFunc
+
+Func _OnNextSiblingOfType()
+    Local $hWnd = $hLastSelectedWin
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
+    If Not $hWnd Then Return
+    
+    Local $sTitle = WinGetTitle($hWnd)
+    Local $iMatchIdx = -1
+    For $b = 0 To $iBrowserCount - 1
+        If StringInStr($sTitle, $aBrowsers[$b][1]) Then
+            $iMatchIdx = $b
+            ExitLoop
+        EndIf
+    Next
+    If $iMatchIdx = -1 Then Return
+    
+    Local $sSuffix = $aBrowsers[$iMatchIdx][1]
+    Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $sSuffix & "$]")
+    Local $aVisibleWins[100]
+    Local $iCount = 0
+    Local $iCurrentIdx = -1
+    For $i = 1 To $aWinList[0][0]
+        Local $hW = $aWinList[$i][1]
+        If BitAND(WinGetState($hW), 2) And Not BitAND(WinGetState($hW), 16) Then
+            $aVisibleWins[$iCount] = $hW
+            If $hW = $hWnd Then $iCurrentIdx = $iCount
+            $iCount += 1
+        EndIf
+    Next
+    
+    If $iCount > 1 And $iCurrentIdx <> -1 Then
+        Local $iTarget = $iCurrentIdx + 1
+        If $iTarget >= $iCount Then $iTarget = 0
+        Local $hTargetWin = $aVisibleWins[$iTarget]
+        _IndicateBrowserWindow($hTargetWin, "Indicated next sibling window of " & $aBrowsers[$iMatchIdx][0])
+    EndIf
+EndFunc
+
+Func _OnAltDownPressed()
+    Local $hWnd = $hLastSelectedWin
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
+    If $hWnd Then
+        WinSetState($hWnd, "", @SW_MINIMIZE)
+        GUICtrlSetData($idStatus, "Minimized indicated browser window")
+        WinActivate($hGUI)
+        ControlFocus($hGUI, "", $idListview)
+    EndIf
+EndFunc
+
+Func _OnAltUpPressed()
+    Local $hWnd = $hLastSelectedWin
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
+    If $hWnd Then
+        WinSetState($hWnd, "", @SW_RESTORE)
+        _WinAPI_SetWindowPos($hWnd, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE))
+        _IndicateBrowserWindow($hWnd, "Restored indicated browser window")
+    EndIf
+EndFunc
+
+Func _OnIndicateLastOnGrid()
+    For $p = 9 To 1 Step -1
+        Local $hWnd = _GetWindowAtGridPosition($p)
+        If $hWnd <> 0 Then
+            _IndicateBrowserWindow($hWnd, "Indicated last window on grid (position " & $p & ")")
+            Return
+        EndIf
+    Next
+    Local $hWndCenter = _GetWindowAtGridPosition(0)
+    If $hWndCenter <> 0 Then
+        _IndicateBrowserWindow($hWndCenter, "Indicated center window on grid")
+        Return
+    EndIf
+    GUICtrlSetData($idStatus, "No windows found on grid")
+EndFunc
+
+Func _OnIndicateFirstOnGrid()
+    Local $hWndCenter = _GetWindowAtGridPosition(0)
+    If $hWndCenter <> 0 Then
+        _IndicateBrowserWindow($hWndCenter, "Indicated center window on grid")
+        Return
+    EndIf
+    For $p = 1 To 9
+        Local $hWnd = _GetWindowAtGridPosition($p)
+        If $hWnd <> 0 Then
+            _IndicateBrowserWindow($hWnd, "Indicated first window on grid (position " & $p & ")")
+            Return
+        EndIf
+    Next
+    GUICtrlSetData($idStatus, "No windows found on grid")
+EndFunc
+
+Func _OnCloseGridHotkey()
+    Local $idPressed = @GUI_CtrlId
+    Local $iTargetPos = -1
+    For $i = 0 To 9
+        If $idPressed = $aDummyCloseGrid[$i] Then
+            $iTargetPos = $i
+            ExitLoop
+        EndIf
+    Next
+    If $iTargetPos = -1 Then Return
+    
+    Local $hWnd = _GetWindowAtGridPosition($iTargetPos)
+    If $hWnd <> 0 Then
+        WinClose($hWnd)
+        GUICtrlSetData($idStatus, "Closed window at grid position " & $iTargetPos)
+        _PopulateList($aIconIndices)
+    Else
+        GUICtrlSetData($idStatus, "No window at grid position " & $iTargetPos)
+    EndIf
+EndFunc
+
+Func _OnIndicateGridHotkey()
+    Local $idPressed = @GUI_CtrlId
+    Local $iTargetPos = -1
+    For $i = 0 To 9
+        If $idPressed = $aDummyIndicateGrid[$i] Then
+            $iTargetPos = $i
+            ExitLoop
+        EndIf
+    Next
+    If $iTargetPos = -1 Then Return
+    
+    Local $hWnd = _GetWindowAtGridPosition($iTargetPos)
+    If $hWnd <> 0 Then
+        _IndicateBrowserWindow($hWnd, "Indicated window at grid position " & $iTargetPos)
+    Else
+        GUICtrlSetData($idStatus, "No window at grid position " & $iTargetPos)
     EndIf
 EndFunc

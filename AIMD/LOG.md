@@ -25,18 +25,26 @@
 ## 💾 Commit Message
 [[#^toc-commit|TOC]]
 ```text
-feat: integrate Opera browser support, 60% taller Help GUI, directional focus hotkeys, zoom, and browser history navigation
+feat: configure Page Up and Page Down to send Ctrl+Page Up and Ctrl+Page Down for tab switching
 
-- Added Opera support at list index 5 with dynamic path detection and shifted Browser Picker to index 6.
-- Expanded the Help Guide dialog height by 60% to 896px and positioned the embedded ActiveX webview and native Close button (Y=850) dynamically.
-- Documented all new hotkeys and mapped the letter 'O' for Opera inside the HTML Help layout.
-- Mapped Ctrl+Left, Ctrl+Right, Ctrl+Up, and Ctrl+Down keys to choose and focus/indicate the browser window in that physical/grid direction.
-- Mapped Ctrl+= and Ctrl+- keys to Zoom In and Zoom Out on the indicated browser window.
-- Mapped Alt+Left and Alt+Right keys to navigate Back and Forward on the indicated browser window.
+- Updated _OnTabLeft and _OnTabRight to send ^{PGUP} and ^{PGDN} under the hood respectively.
+- Refactored the Help guide layout to reflect that Page Up and Page Down switch tabs via Ctrl+Page Up/Down.
 ```
 
 ## 📝 Log Entries
 [[#^toc-entries|TOC]]
+
+### 📅 [2026-06-28T02:04:00-07:00]
+#### 🎯 Primary Goals & Requirements
+- Configure Page Up and Page Down (the previous and next tab keys) to send `Ctrl+Page Up` and `Ctrl+Page Down` to the indicated browser window under the hood for tab switching.
+
+#### 🛠️ Completed Changes in this Session
+- Refactored `_OnTabLeft()` to send `^{PGUP}` (Ctrl+PageUp) instead of `^+{TAB}`.
+- Refactored `_OnTabRight()` to send `^{PGDN}` (Ctrl+PageDown) instead of `^{TAB}`.
+- Updated the Help guide HTML text to mention the precise underlying shortcuts.
+
+#### 🔸 Affected Files
+- `/desk-browsers.au3`
 
 ### 📅 [2026-06-28T01:50:00-07:00]
 #### 🎯 Primary Goals & Requirements

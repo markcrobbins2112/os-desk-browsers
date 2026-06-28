@@ -53,7 +53,7 @@
 - [x] Redesign Help Dialog to be a gorgeous standard dialog with borderless embedded-HTML and professional dark theme styling.
 - [x] Refactor all white background elements of the main UI into medium grey.
 - [x] Map Alt+0-9 to move focus indicator (orange border) to the window at that grid position and bring it to top.
-- [x] Refactor PageUp, PageDown, and Delete to use brief activation and Send keys targeting the indicated window.
+- [x] Refactor PageUp, PageDown, and Delete to use brief activation and Send keys targeting the indicated window (Page Up and Page Down send Ctrl+Page Up and Ctrl+Page Down under the hood to change tabs).
 - [x] Map Esc to close the Help dialog gracefully.
 - [x] Remove iframe-like border around the HTML in the embedded Help viewer.
 - [x] Map Ctrl+PageUp and Ctrl+PageDown to cycle all windows currently on the grid to adjacent positions.
