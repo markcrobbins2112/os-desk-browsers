@@ -752,21 +752,20 @@ Func _ShowHelp()
         Return
     EndIf
     
-    ; Create popup borderless help window centered on desktop.
-    ; Style 0x80000000 is $WS_POPUP.
-    ; Width: 600, Height: 540.
-    ; We set the GUI background color to Orange (0xFF6600) to act as a 2px outer border wrapper.
-    $hHelpGUI = GUICreate("Help / Shortcut Guide", 600, 540, -1, -1, 0x80000000, BitOR($WS_EX_TOPMOST, 0x00080000), $hGUI) ; 0x00080000 is $WS_EX_LAYERED
-    GUISetBkColor(0xFF6600, $hHelpGUI)
+    ; Create a standard, fully visible dialog frame centered on desktop
+    ; Width: 610, Height: 560
+    ; 0x00C00000 is $WS_CAPTION, 0x00080000 is $WS_SYSMENU
+    $hHelpGUI = GUICreate("Help / Shortcut Guide", 610, 560, -1, -1, BitOR(0x00C00000, 0x00080000), -1, $hGUI)
+    GUISetBkColor(0x1E1E1E, $hHelpGUI)
     
-    ; Create embedded browser control, leaving 2px on all sides for the orange border frame.
+    ; Create embedded browser control
     Local $oIE = ObjCreate("Shell.Explorer.2")
     If Not IsObj($oIE) Then
         MsgBox(16, "Error", "Failed to create Internet Explorer object for Web Help.")
         Return
     EndIf
     
-    Local $idIE_Ctrl = GUICtrlCreateObj($oIE, 2, 2, 596, 480)
+    Local $idIE_Ctrl = GUICtrlCreateObj($oIE, 5, 5, 600, 500)
     
     ; Navigate to empty page and write the beautiful HTML
     $oIE.navigate("about:blank")
@@ -961,12 +960,12 @@ Func _ShowHelp()
     $oIE.document.write($sHTML)
     
     ; Native styled close button at the bottom
-    Local $idCloseBtn = GUICtrlCreateButton("Close Help Guide", 200, 492, 200, 32)
+    Local $idCloseBtn = GUICtrlCreateButton("Close Help Guide", 205, 515, 200, 32)
     GUICtrlSetBkColor($idCloseBtn, 0x1E1E1E) ; Dark slate button background
     GUICtrlSetColor($idCloseBtn, 0xFFFFFF)
     GUICtrlSetFont($idCloseBtn, 10, 600, 0, "Segoe UI")
     
-    ; Setup events for borderless GUI
+    ; Setup events for Help GUI
     GUISetOnEvent(-3, "_HelpGUI_Close", $hHelpGUI) ; -3 is $GUI_EVENT_CLOSE
     GUICtrlSetOnEvent($idCloseBtn, "_HelpGUI_Close")
     

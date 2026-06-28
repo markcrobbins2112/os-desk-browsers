@@ -40,6 +40,20 @@ feat: implement dynamic z-order restoration, tab/sibling navigation hotkeys, ric
 ## 📝 Log Entries
 [[#^toc-entries|TOC]]
 
+### 📅 [2026-06-28T01:00:00-07:00]
+#### 🎯 Primary Goals & Requirements
+- Restore the Help GUI dialog to a standard visible window frame to prevent transparency and rendering issues with ActiveX controls.
+- Retain the custom dark-themed HTML/CSS shortcut helper layout.
+
+#### 🛠️ Completed Changes in this Session
+- Redefined `$hHelpGUI` to use the standard, fully visible dialog window style (`BitOR(0x00C00000, 0x00080000)` equivalent to `$WS_CAPTION` and `$WS_SYSMENU`) with a solid background color (`0x1E1E1E`).
+- Centered and positioned the embedded web view (`Shell.Explorer.2`) and the close button perfectly within the standard window frame, ensuring flawless rendering and crisp visual clarity.
+
+#### 🔸 Affected Files
+- `/desk-browsers.au3`
+
+---
+
 ### 📅 [2026-06-28T00:50:00-07:00]
 #### 🎯 Primary Goals & Requirements
 - Fix non-closing Help GUI in OnEvent Mode.
