@@ -55,6 +55,7 @@ Global $idDummyCopyUrl
 Global $idDummySendToBack
 Global $idDummyMinimizeToggle
 Global $idDummyEnter
+Global $bHelpClosed = False
 
 Global $idHelpBtn
 Global $idListview
@@ -758,7 +759,7 @@ Func _ShowHelp()
     GUICtrlSetColor($idSubHeader, 0x858585)
     GUICtrlSetBkColor($idSubHeader, -2) ; $GUI_BKCOLOR_TRANSPARENT = -2
     
-    Local $idKeysEdit = GUICtrlCreateEdit("", 20, 70, 540, 350, BitOR($ES_READONLY, $ES_MULTILINE, $WS_VSCROLL))
+    Local $idKeysEdit = GUICtrlCreateEdit("", 20, 70, 540, 350, BitOR(0x0800, 0x0004, 0x00200000)) ; Read-only, Multiline, Vertical scroll
     GUICtrlSetBkColor($idKeysEdit, 0x2D2D2D) ; Medium grey background
     GUICtrlSetColor($idKeysEdit, 0xE0E0E0) ; Light grey text
     GUICtrlSetFont($idKeysEdit, 10, 400, 0, "Consolas")
@@ -796,16 +797,21 @@ Func _ShowHelp()
     GUICtrlSetColor($idCloseBtn, 0xFFFFFF)
     GUICtrlSetFont($idCloseBtn, 9, 600, 0, "Segoe UI")
     
+    $bHelpClosed = False
+    GUISetOnEvent(-3, "_HelpGUI_Close", $hHelpGUI) ; -3 is $GUI_EVENT_CLOSE
+    GUICtrlSetOnEvent($idCloseBtn, "_HelpGUI_Close")
+    
     GUISetState(@SW_SHOW, $hHelpGUI)
     
-    While 1
-        Local $aMsg = GUIGetMsg(1)
-        If $aMsg[1] = $hHelpGUI Then
-            If $aMsg[0] = $GUI_EVENT_CLOSE Or $aMsg[0] = $idCloseBtn Then ExitLoop
-        EndIf
+    While Not $bHelpClosed And WinExists($hHelpGUI)
+        Sleep(50)
     WEnd
     
     GUIDelete($hHelpGUI)
+EndFunc
+
+Func _HelpGUI_Close()
+    $bHelpClosed = True
 EndFunc
 
 Func _OnShortcut()

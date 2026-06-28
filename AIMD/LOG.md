@@ -40,6 +40,21 @@ feat: implement dynamic z-order restoration, tab/sibling navigation hotkeys, ric
 ## 📝 Log Entries
 [[#^toc-entries|TOC]]
 
+### 📅 [2026-06-28T00:40:00-07:00]
+#### 🎯 Primary Goals & Requirements
+- Fix the startup crash caused by undeclared/missing variables `$idDummyDelete`, `$idDummyRight`, `$idDummyLeft`, and style masks.
+- Fix the runtime crash in the Help GUI loop when checking `$aMsg[1]` under OnEvent mode.
+
+#### 🛠️ Completed Changes in this Session
+- Declared `$idDummyDelete`, `$idDummyRight`, and `$idDummyLeft` globally at the top of the script.
+- Replaced the `$ES_READONLY`, `$ES_MULTILINE`, and `$WS_VSCROLL` edit style variables with literal hexadecimal values (`0x0800`, `0x0004`, `0x00200000`) to guarantee compatibility across all standard and custom AutoIt runtime environments.
+- Declared global `$bHelpClosed` flag and refactored the Help GUI's message loop to use `GUISetOnEvent` and `GUICtrlSetOnEvent` handlers instead of `GUIGetMsg` which is incompatible with `GUIOnEventMode = 1`.
+
+#### 🔸 Affected Files
+- `/desk-browsers.au3`
+
+---
+
 ### 📅 [2026-06-28T00:22:00-07:00]
 #### 🎯 Primary Goals & Requirements
 - Restore the original Z-order position when the orange border is removed.
