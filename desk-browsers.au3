@@ -27,22 +27,22 @@ Opt("GUIOnEventMode", 1)
 ; ==============================================================================
 ; GLOBAL VARIABLE DECLARATIONS
 ; ==============================================================================
-Global $aBrowsers[6][5]
+Global $aBrowsers[7][5]
 Global $iBrowserCount
 Global $bGUI_Visible = True
-Global $aLastCounts[6]
+Global $aLastCounts[7]
 Global $hLastSelectedWin = 0
 Global $hLastPrevWin = 0
 Global $hBorderWin = 0
 Global $iLastSelectionIndex = -1
 
-Global $aDummyActivate[6]
-Global $aDummyClose[6]
-Global $aDummyFocus[6]
+Global $aDummyActivate[7]
+Global $aDummyClose[7]
+Global $aDummyFocus[7]
 Global $aDummyGrid[10] ; 0-9 hotkeys
 Global $aDummySwap[9]   ; 1-9 swap hotkeys
 Global $aDummyFocusGrid[10] ; Alt + 0-9 focus hotkeys
-Global $aIconIndices[6]
+Global $aIconIndices[7]
 
 Global $idDummyEscape
 Global $idDummyInsert
@@ -67,6 +67,15 @@ Global $idDummyNewTabWithClipboard
 Global $idDummyNewWindowWithCurrentUrl
 Global $idDummyHelp
 Global $aDummyGridNewTab[10]
+
+Global $idDummyIndicateLeft
+Global $idDummyIndicateRight
+Global $idDummyIndicateUp
+Global $idDummyIndicateDown
+Global $idDummyZoomIn
+Global $idDummyZoomOut
+Global $idDummyBack
+Global $idDummyForward
 
 Global $idHelpBtn
 Global $idListview
@@ -106,11 +115,19 @@ $aBrowsers[4][2] = "C:\Program Files\Mozilla Firefox\firefox.exe"
 $aBrowsers[4][3] = "firefox.exe"
 $aBrowsers[4][4] = "F"
 
-$aBrowsers[5][0] = "Browser Picker"
-$aBrowsers[5][1] = "BrowserPicker"
-$aBrowsers[5][2] = "C:\Program Files\BrowserPicker\BrowserPicker.exe"
-$aBrowsers[5][3] = "BrowserPicker.exe"
-$aBrowsers[5][4] = "P"
+Local $sOperaPath = @LocalAppDataDir & "\Programs\Opera\launcher.exe"
+If Not FileExists($sOperaPath) Then $sOperaPath = @ProgramFilesDir & "\Opera\launcher.exe"
+$aBrowsers[5][0] = "Opera"
+$aBrowsers[5][1] = "Opera"
+$aBrowsers[5][2] = $sOperaPath
+$aBrowsers[5][3] = "opera.exe"
+$aBrowsers[5][4] = "O"
+
+$aBrowsers[6][0] = "Browser Picker"
+$aBrowsers[6][1] = "BrowserPicker"
+$aBrowsers[6][2] = "C:\Program Files\BrowserPicker\BrowserPicker.exe"
+$aBrowsers[6][3] = "BrowserPicker.exe"
+$aBrowsers[6][4] = "P"
 
 $iBrowserCount = UBound($aBrowsers, 1)
 
@@ -231,6 +248,25 @@ $idDummyNewWindowWithCurrentUrl = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyNewWindowWithCurrentUrl, "_OnNewWindowWithCurrentUrl")
 $idDummyHelp = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyHelp, "_OnHelpPressed")
+
+$idDummyIndicateLeft = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyIndicateLeft, "_OnIndicateLeft")
+$idDummyIndicateRight = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyIndicateRight, "_OnIndicateRight")
+$idDummyIndicateUp = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyIndicateUp, "_OnIndicateUp")
+$idDummyIndicateDown = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyIndicateDown, "_OnIndicateDown")
+
+$idDummyZoomIn = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyZoomIn, "_OnZoomIn")
+$idDummyZoomOut = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyZoomOut, "_OnZoomOut")
+
+$idDummyBack = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyBack, "_OnBack")
+$idDummyForward = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyForward, "_OnForward")
 
 Local $aAccelKeys[150][2]
 Local $idx = 0
@@ -385,6 +421,38 @@ $idx += 1
 
 $aAccelKeys[$idx][0] = "{F1}"
 $aAccelKeys[$idx][1] = $idDummyHelp
+$idx += 1
+
+$aAccelKeys[$idx][0] = "^{LEFT}"
+$aAccelKeys[$idx][1] = $idDummyIndicateLeft
+$idx += 1
+
+$aAccelKeys[$idx][0] = "^{RIGHT}"
+$aAccelKeys[$idx][1] = $idDummyIndicateRight
+$idx += 1
+
+$aAccelKeys[$idx][0] = "^{UP}"
+$aAccelKeys[$idx][1] = $idDummyIndicateUp
+$idx += 1
+
+$aAccelKeys[$idx][0] = "^{DOWN}"
+$aAccelKeys[$idx][1] = $idDummyIndicateDown
+$idx += 1
+
+$aAccelKeys[$idx][0] = "^="
+$aAccelKeys[$idx][1] = $idDummyZoomIn
+$idx += 1
+
+$aAccelKeys[$idx][0] = "^-"
+$aAccelKeys[$idx][1] = $idDummyZoomOut
+$idx += 1
+
+$aAccelKeys[$idx][0] = "!{LEFT}"
+$aAccelKeys[$idx][1] = $idDummyBack
+$idx += 1
+
+$aAccelKeys[$idx][0] = "!{RIGHT}"
+$aAccelKeys[$idx][1] = $idDummyForward
 $idx += 1
 
 ; ReDim the array to the exact count of mapped keys to avoid empty/unpopulated trailing rows which fail GUISetAccelerators
@@ -832,9 +900,9 @@ Func _ShowHelp()
     EndIf
     
     ; Create a standard, fully visible dialog frame centered on desktop
-    ; Width: 610, Height: 560
+    ; Width: 610, Height: 896 (60% taller than 560)
     ; 0x00C00000 is $WS_CAPTION, 0x00080000 is $WS_SYSMENU
-    $hHelpGUI = GUICreate("Help / Shortcut Guide", 610, 560, -1, -1, BitOR(0x00C00000, 0x00080000), -1, $hGUI)
+    $hHelpGUI = GUICreate("Help / Shortcut Guide", 610, 896, -1, -1, BitOR(0x00C00000, 0x00080000), -1, $hGUI)
     GUISetBkColor(0x1E1E1E, $hHelpGUI)
     
     ; Create embedded browser control
@@ -844,7 +912,7 @@ Func _ShowHelp()
         Return
     EndIf
     
-    Local $idIE_Ctrl = GUICtrlCreateObj($oIE, 5, 5, 600, 500)
+    Local $idIE_Ctrl = GUICtrlCreateObj($oIE, 5, 5, 600, 830)
     _WinAPI_SetWindowLong(GUICtrlGetHandle($idIE_Ctrl), -20, BitAND(_WinAPI_GetWindowLong(GUICtrlGetHandle($idIE_Ctrl), -20), BitNOT(0x00000200)))
     
     ; Navigate to empty page and write the beautiful HTML
@@ -956,8 +1024,8 @@ Func _ShowHelp()
         "        <div class='section-title'>Workspace Navigation</div>" & _
         "        <table class='shortcut-table'>" & _
         "            <tr class='shortcut-row'>" & _
-        "                <td class='shortcut-key'><kbd>B</kbd> / <kbd>C</kbd> / <kbd>E</kbd> / <kbd>V</kbd> / <kbd>F</kbd> / <kbd>P</kbd></td>" & _
-        "                <td class='shortcut-desc'>Activate or Launch targeted browser</td>" & _
+        "                <td class='shortcut-key'><kbd>B</kbd> / <kbd>C</kbd> / <kbd>E</kbd> / <kbd>V</kbd> / <kbd>F</kbd> / <kbd>O</kbd> / <kbd>P</kbd></td>" & _
+        "                <td class='shortcut-desc'>Activate or Launch targeted browser (Opera is O)</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
         "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>Letter</kbd></td>" & _
@@ -973,11 +1041,23 @@ Func _ShowHelp()
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
         "                <td class='shortcut-key'><kbd>Esc</kbd></td>" & _
-        "                <td class='shortcut-desc'>Minimize Manager window to system tray</td>" & _
+        "                <td class='shortcut-desc'>Minimize Manager window to system tray / Close Help</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
         "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>C</kbd></td>" & _
         "                <td class='shortcut-desc'>Copy current tab URL to Clipboard</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>&larr;</kbd> / <kbd>&rarr;</kbd> / <kbd>&uarr;</kbd> / <kbd>&darr;</kbd></td>" & _
+        "                <td class='shortcut-desc'>Indicate/focus browser window in that direction</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>=</kbd> / <kbd>-</kbd></td>" & _
+        "                <td class='shortcut-desc'>Zoom In / Zoom Out on indicated browser</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Alt</kbd> + <kbd>&larr;</kbd> / <kbd>&rarr;</kbd></td>" & _
+        "                <td class='shortcut-desc'>Navigate Back / Forward on indicated browser</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
         "                <td class='shortcut-key'><kbd>-</kbd> (Minus)</td>" & _
@@ -1002,12 +1082,24 @@ Func _ShowHelp()
         "                <td class='shortcut-desc'>Go to <span class='highlight'>NEXT</span> tab of selected window</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Page Up/Dn</kbd></td>" & _
+        "                <td class='shortcut-desc'>Move current active tab Left or Right</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
         "                <td class='shortcut-key'><kbd>Delete</kbd></td>" & _
         "                <td class='shortcut-desc'>Close current tab of selected window (<kbd>Ctrl</kbd>+<kbd>W</kbd>)</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
         "                <td class='shortcut-key'><kbd>Insert</kbd></td>" & _
-        "                <td class='shortcut-desc'>Create a new tab (<kbd>Ctrl</kbd>+<kbd>T</kbd>) / clipboard launch</td>" & _
+        "                <td class='shortcut-desc'>Create a blank new tab (<kbd>Ctrl</kbd>+<kbd>T</kbd>)</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>V</kbd> / <kbd>Shift</kbd> + <kbd>Insert</kbd></td>" & _
+        "                <td class='shortcut-desc'>Open a new tab with the clipboard URL</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Shift</kbd> + <kbd>Enter</kbd></td>" & _
+        "                <td class='shortcut-desc'>Create a new window with current tab URL</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
         "                <td class='shortcut-key'><kbd>&rarr;</kbd> (Right Arrow)</td>" & _
@@ -1036,6 +1128,10 @@ Func _ShowHelp()
         "                <td class='shortcut-desc'>Swap current center slot (5) window with target slot</td>" & _
         "            </tr>" & _
         "            <tr class='shortcut-row'>" & _
+        "                <td class='shortcut-key'><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>0-9</kbd></td>" & _
+        "                <td class='shortcut-desc'>Open new tab at grid window with current window's URL</td>" & _
+        "            </tr>" & _
+        "            <tr class='shortcut-row'>" & _
         "                <td class='shortcut-key'><kbd>Alt</kbd> + <kbd>PageUp/Dn</kbd></td>" & _
         "                <td class='shortcut-desc'>Bring ALL instances of selected browser to front</td>" & _
         "            </tr>" & _
@@ -1048,7 +1144,7 @@ Func _ShowHelp()
     $oIE.document.body.style.border = "none"
     
     ; Native styled close button at the bottom
-    Local $idCloseBtn = GUICtrlCreateButton("Close Help Guide", 205, 515, 200, 32)
+    Local $idCloseBtn = GUICtrlCreateButton("Close Help Guide", 205, 850, 200, 32)
     GUICtrlSetBkColor($idCloseBtn, 0x1E1E1E) ; Dark slate button background
     GUICtrlSetColor($idCloseBtn, 0xFFFFFF)
     GUICtrlSetFont($idCloseBtn, 10, 600, 0, "Segoe UI")
@@ -1575,4 +1671,229 @@ Func _ExitApp()
     EndIf
     _ClearOrangeBorder()
     Exit
+EndFunc
+
+Func _OnIndicateLeft()
+    _IndicateDirection("Left")
+EndFunc
+
+Func _OnIndicateRight()
+    _IndicateDirection("Right")
+EndFunc
+
+Func _OnIndicateUp()
+    _IndicateDirection("Up")
+EndFunc
+
+Func _OnIndicateDown()
+    _IndicateDirection("Down")
+EndFunc
+
+Func _IndicateDirection($sDir)
+    Local $hWnd = $hLastSelectedWin
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
+    If Not $hWnd Then
+        GUICtrlSetData($idStatus, "No active/indicated browser window to navigate from")
+        Return
+    EndIf
+    
+    Local $hTarget = _GetNeighborWindow($hWnd, $sDir)
+    If $hTarget <> 0 Then
+        _IndicateBrowserWindow($hTarget, "Indicated browser window to the " & $sDir)
+    Else
+        GUICtrlSetData($idStatus, "No browser window found to the " & $sDir)
+    EndIf
+EndFunc
+
+Func _IndicateBrowserWindow($hWnd, $sMsg)
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then Return
+    Local $sTitle = WinGetTitle($hWnd)
+    Local $iMatchIdx = -1
+    For $b = 0 To $iBrowserCount - 1
+        If StringInStr($sTitle, $aBrowsers[$b][1]) Then
+            $iMatchIdx = $b
+            ExitLoop
+        EndIf
+    Next
+    
+    _WinAPI_SetWindowPos($hWnd, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE)) ; HWND_TOP = 0
+    If $bGUI_Visible Then
+        WinActivate($hGUI)
+    EndIf
+    
+    If $iMatchIdx <> -1 Then
+        _GUICtrlListView_SetItemSelected($idListview, $iMatchIdx, True, True)
+        _GUICtrlListView_EnsureVisible($idListview, $iMatchIdx)
+        ControlFocus($hGUI, "", $idListview)
+    EndIf
+    
+    _DrawOrangeBorder($hWnd)
+    If $sMsg <> "" Then GUICtrlSetData($idStatus, $sMsg)
+EndFunc
+
+Func _GetNeighborWindow($hWnd, $sDir)
+    Local $sPos = _GetGridPosition($hWnd)
+    If $sPos = "None" Then
+        Return _GetClosestWindowInDirection($hWnd, $sDir)
+    EndIf
+    
+    Local $iPos = Int($sPos)
+    Local $iTargetPos = -1
+    
+    If $iPos = 0 Then ; Center window
+        If $sDir = "Left" Then $iTargetPos = 4
+        If $sDir = "Right" Then $iTargetPos = 6
+        If $sDir = "Up" Then $iTargetPos = 2
+        If $sDir = "Down" Then $iTargetPos = 8
+        
+        Local $hTarget = _GetWindowAtGridPosition($iTargetPos)
+        If $hTarget <> 0 Then Return $hTarget
+        Return _GetClosestWindowInDirection($hWnd, $sDir)
+    EndIf
+    
+    ; 1-9 grid navigation
+    Local $iCol = Mod($iPos - 1, 3)
+    Local $iRow = Int(($iPos - 1) / 3)
+    
+    Local $iStepCol = 0, $iStepRow = 0
+    If $sDir = "Left" Then $iStepCol = -1
+    If $sDir = "Right" Then $iStepCol = 1
+    If $sDir = "Up" Then $iStepRow = -1
+    If $sDir = "Down" Then $iStepRow = 1
+    
+    For $step = 1 To 2
+        Local $nCol = Mod($iCol + $iStepCol * $step + 6, 3)
+        Local $nRow = Mod($iRow + $iStepRow * $step + 6, 3)
+        Local $nPos = $nRow * 3 + $nCol + 1
+        Local $hTarget = _GetWindowAtGridPosition($nPos)
+        If $hTarget <> 0 Then Return $hTarget
+    Next
+    
+    Return _GetClosestWindowInDirection($hWnd, $sDir)
+EndFunc
+
+Func _GetClosestWindowInDirection($hWndSource, $sDir)
+    Local $aPosSource = WinGetPos($hWndSource)
+    If Not IsArray($aPosSource) Then Return 0
+    Local $cX0 = $aPosSource[0] + Int($aPosSource[2] / 2)
+    Local $cY0 = $aPosSource[1] + Int($aPosSource[3] / 2)
+    
+    Local $aWins = _GetAllVisibleBrowserWindows()
+    Local $hBestWin = 0
+    Local $iBestDist = 9999999
+    Local $iPenalty = 2
+    
+    For $i = 0 To UBound($aWins) - 1
+        Local $hWnd = $aWins[$i]
+        If $hWnd = $hWndSource Then ContinueLoop
+        
+        Local $aPos = WinGetPos($hWnd)
+        If Not IsArray($aPos) Then ContinueLoop
+        Local $cX = $aPos[0] + Int($aPos[2] / 2)
+        Local $cY = $aPos[1] + Int($aPos[3] / 2)
+        
+        Local $iDist = 0
+        Local $bValid = False
+        
+        If $sDir = "Left" Then
+            If $cX < $cX0 - 10 Then
+                $iDist = ($cX0 - $cX) + $iPenalty * Abs($cY0 - $cY)
+                $bValid = True
+            EndIf
+        ElseIf $sDir = "Right" Then
+            If $cX > $cX0 + 10 Then
+                $iDist = ($cX - $cX0) + $iPenalty * Abs($cY0 - $cY)
+                $bValid = True
+            EndIf
+        ElseIf $sDir = "Up" Then
+            If $cY < $cY0 - 10 Then
+                $iDist = ($cY0 - $cY) + $iPenalty * Abs($cX0 - $cX)
+                $bValid = True
+            EndIf
+        ElseIf $sDir = "Down" Then
+            If $cY > $cY0 + 10 Then
+                $iDist = ($cY - $cY0) + $iPenalty * Abs($cX0 - $cX)
+                $bValid = True
+            EndIf
+        EndIf
+        
+        If $bValid And $iDist < $iBestDist Then
+            $iBestDist = $iDist
+            $hBestWin = $hWnd
+        EndIf
+    Next
+    
+    If $hBestWin = 0 Then
+        $iBestDist = 9999999
+        For $i = 0 To UBound($aWins) - 1
+            Local $hWnd = $aWins[$i]
+            If $hWnd = $hWndSource Then ContinueLoop
+            Local $aPos = WinGetPos($hWnd)
+            If Not IsArray($aPos) Then ContinueLoop
+            Local $cX = $aPos[0] + Int($aPos[2] / 2)
+            Local $cY = $aPos[1] + Int($aPos[3] / 2)
+            
+            Local $iDist = 0
+            Local $bValid = False
+            
+            If $sDir = "Left" Then
+                If $cX > $cX0 + 10 Then
+                    $iDist = $cX + $iPenalty * Abs($cY0 - $cY)
+                    $bValid = True
+                EndIf
+            ElseIf $sDir = "Right" Then
+                If $cX < $cX0 - 10 Then
+                    $iDist = (0 - $cX) + $iPenalty * Abs($cY0 - $cY)
+                    $bValid = True
+                EndIf
+            ElseIf $sDir = "Up" Then
+                If $cY > $cY0 + 10 Then
+                    $iDist = $cY + $iPenalty * Abs($cX0 - $cX)
+                    $bValid = True
+                EndIf
+            ElseIf $sDir = "Down" Then
+                If $cY < $cY0 - 10 Then
+                    $iDist = (0 - $cY) + $iPenalty * Abs($cX0 - $cX)
+                    $bValid = True
+                EndIf
+            EndIf
+            
+            If $bValid And $iDist < $iBestDist Then
+                $iBestDist = $iDist
+                $hBestWin = $hWnd
+            EndIf
+        Next
+    EndIf
+    
+    Return $hBestWin
+EndFunc
+
+Func _OnZoomIn()
+    _SendKeysToIndicated("^=", "Zoomed in indicated browser window")
+EndFunc
+
+Func _OnZoomOut()
+    _SendKeysToIndicated("^-", "Zoomed out indicated browser window")
+EndFunc
+
+Func _OnBack()
+    _SendKeysToIndicated("!{LEFT}", "Navigated back on indicated browser window")
+EndFunc
+
+Func _OnForward()
+    _SendKeysToIndicated("!{RIGHT}", "Navigated forward on indicated browser window")
+EndFunc
+
+Func _SendKeysToIndicated($sKeys, $sStatusMsg)
+    Local $hWnd = $hLastSelectedWin
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
+    If $hWnd Then 
+        Local $hActivePrev = WinGetHandle("[ACTIVE]")
+        WinActivate($hWnd)
+        Sleep(50)
+        Send($sKeys)
+        Sleep(50)
+        If $hActivePrev Then WinActivate($hActivePrev)
+        If $sStatusMsg <> "" Then GUICtrlSetData($idStatus, $sStatusMsg)
+    EndIf
 EndFunc

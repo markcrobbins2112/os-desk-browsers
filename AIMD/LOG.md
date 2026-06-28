@@ -25,20 +25,38 @@
 ## 💾 Commit Message
 [[#^toc-commit|TOC]]
 ```text
-feat: implement dynamic z-order restoration, tab/sibling navigation hotkeys, rich-text custom help GUI, and medium grey theme
+feat: integrate Opera browser support, 60% taller Help GUI, directional focus hotkeys, zoom, and browser history navigation
 
-- Encapsulated Z-index promotion and precise previous sibling restoration inside _DrawOrangeBorder and _ClearOrangeBorder.
-- Mapped PageUp and PageDown keys to select next and previous browser tabs.
-- Mapped Delete to close the current tab of the selected browser window.
-- Mapped Insert to create a new tab for the selected browser window.
-- Mapped Right Arrow to bring the deepest sibling window of the selected browser to the top.
-- Mapped Left Arrow to push the current top browser window to the bottom of sibling Z-order and bring the next sibling to top.
-- Replaced the simple MsgBox help with a custom-designed, styled, and media-rich dark themed help GUI.
-- Refactored the main UI background and header controls to a highly professional, low-glare medium grey theme (0x2D2D2D/0x3D3D3D).
+- Added Opera support at list index 5 with dynamic path detection and shifted Browser Picker to index 6.
+- Expanded the Help Guide dialog height by 60% to 896px and positioned the embedded ActiveX webview and native Close button (Y=850) dynamically.
+- Documented all new hotkeys and mapped the letter 'O' for Opera inside the HTML Help layout.
+- Mapped Ctrl+Left, Ctrl+Right, Ctrl+Up, and Ctrl+Down keys to choose and focus/indicate the browser window in that physical/grid direction.
+- Mapped Ctrl+= and Ctrl+- keys to Zoom In and Zoom Out on the indicated browser window.
+- Mapped Alt+Left and Alt+Right keys to navigate Back and Forward on the indicated browser window.
 ```
 
 ## 📝 Log Entries
 [[#^toc-entries|TOC]]
+
+### 📅 [2026-06-28T01:50:00-07:00]
+#### 🎯 Primary Goals & Requirements
+- Add Opera to the list of Browsers with dynamic installation path detection.
+- Make the Help Guide dialog window 60% taller (896px height) to provide a spacious reading layout.
+- Map `Ctrl+Left`, `Ctrl+Right`, `Ctrl+Up`, and `Ctrl+Down` keys to focus/indicate the browser window in that spatial direction.
+- Map `Ctrl+=` and `Ctrl+-` keys to zoom in and zoom out on the indicated browser window.
+- Map `Alt+Left` and `Alt+Right` keys to navigate backward and forward in the browser history of the indicated browser.
+
+#### 🛠️ Completed Changes in this Session
+- Inserted Opera browser support at array index 5 of `$aBrowsers`, shift Browser Picker to index 6, and expanded the size of all tracking arrays accordingly.
+- Scaled `$hHelpGUI` height to 896px, updated embedded browser control height to 830px, and moved the native Close button to Y=850.
+- Updated the Help HTML structure to list Opera as activate/launch key `O` and fully document all new hotkeys.
+- Implemented `_OnIndicateLeft()`, `_OnIndicateRight()`, `_OnIndicateUp()`, and `_OnIndicateDown()` calling a direction navigation routine (`_IndicateDirection()`) that computes the neighbor window on the 3x3 grid or selects the physically closest browser window using 2D distance calculations.
+- Implemented zoom handlers `_OnZoomIn()` and `_OnZoomOut()`, passing `^=` and `^-` to the target window.
+- Implemented history navigation handlers `_OnBack()` and `_OnForward()`, passing `!{LEFT}` and `!{RIGHT}` keys to the target window.
+- Built and verified the codebase with no syntax errors.
+
+#### 🔸 Affected Files
+- `/desk-browsers.au3`
 
 ### 📅 [2026-06-28T01:35:00-07:00]
 #### 🎯 Primary Goals & Requirements

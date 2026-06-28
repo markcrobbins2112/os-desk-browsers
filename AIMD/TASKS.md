@@ -65,6 +65,11 @@
 - [x] Map F1 to open the Help guide window.
 - [x] Map Esc within the Help GUI context to close it instantly.
 - [x] Map Ctrl+Shift+0-9 to copy the current window's URL and open it as a new tab on the browser window at that grid position.
+- [x] Make the Help guide dialog window 60% taller (from 560 to 896 px height).
+- [x] Add Opera support to the list of managed browsers, dynamically detecting install paths.
+- [x] Map Ctrl+Left, Ctrl+Right, Ctrl+Up, and Ctrl+Down to indicate/focus the browser window in that physical direction.
+- [x] Map Ctrl+= and Ctrl+- to Zoom In and Zoom Out on the indicated browser window.
+- [x] Map Alt+Left and Alt+Right to navigate Back and Forward in the history of the indicated browser.
 
 ## 🔄 New Changes
 [[#^toc-changes|TOC]]
