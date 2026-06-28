@@ -33,6 +33,7 @@ Global $aLastCounts[6]
 Global $hLastSelectedWin = 0
 Global $hLastPrevWin = 0
 Global $hBorderWin = 0
+Global $iLastSelectionIndex = -1
 
 Global $aDummyActivate[6]
 Global $aDummyClose[6]
@@ -49,6 +50,7 @@ Global $idDummySiblingUp
 Global $idDummyCopyUrl
 Global $idDummySendToBack
 Global $idDummyMinimizeToggle
+Global $idDummyEnter
 
 Global $idHelpBtn
 Global $idListview
@@ -99,21 +101,28 @@ $iBrowserCount = UBound($aBrowsers, 1)
 ; ==============================================================================
 ; USER INTERFACE SETUP
 ; ==============================================================================
-$hGUI = GUICreate("Browser Manager", 580, 320, -1, -1, BitOR($WS_OVERLAPPEDWINDOW, $WS_CLIPSIBLINGS), $WS_EX_TOPMOST)
-GUICtrlCreateLabel("Keys: Letter (Act) | Ctrl+Letter (Close) | Alt+Letter (Focus) | Esc (Min) | - (Min Toggle) | Backspace (To Back)", 10, 12, 470, 20)
+$hGUI = GUICreate("Browser Manager", 700, 320, -1, -1, BitOR($WS_OVERLAPPEDWINDOW, $WS_CLIPSIBLINGS), $WS_EX_TOPMOST)
+GUISetBkColor(0x1E1E1E, $hGUI) ; Sleek dark background
+
+Local $idTitleLabel = GUICtrlCreateLabel("Keys: Letter (Act) | Ctrl+Letter (Close) | Alt+Letter (Focus) | Esc (Min) | - (Min Toggle) | Backspace (To Back)", 10, 12, 580, 20)
+GUICtrlSetColor($idTitleLabel, 0xE0E0E0) ; Light gray text
 
 ; Help Button UI Placement
-$idHelpBtn = GUICtrlCreateButton("Help / Shortcuts", 480, 8, 90, 24)
+$idHelpBtn = GUICtrlCreateButton("Help / Shortcuts", 600, 8, 90, 24)
+GUICtrlSetBkColor($idHelpBtn, 0x2D2D2D) ; Dark button background
+GUICtrlSetColor($idHelpBtn, 0xFFFFFF)  ; White text
 GUICtrlSetOnEvent($idHelpBtn, "_ShowHelp")
 
 ; Create ListView with Positions and Minimized tracking metrics
-$idListview = GUICtrlCreateListView("Browser|Status|Shortcut|Instances|Grid Pos|Minimized", 10, 40, 560, 230, BitOR($LVS_REPORT, $LVS_SINGLESEL, $LVS_SHOWSELALWAYS))
-_GUICtrlListView_SetColumnWidth($idListview, 0, 160)
+$idListview = GUICtrlCreateListView("Browser|Status|Shortcut|Instances|Grid Pos|Minimized", 10, 40, 680, 230, BitOR($LVS_REPORT, $LVS_SINGLESEL, $LVS_SHOWSELALWAYS))
+GUICtrlSetBkColor($idListview, 0x252526) ; Dark ListView background
+GUICtrlSetColor($idListview, 0xF1F1F1)  ; Off-white text
+_GUICtrlListView_SetColumnWidth($idListview, 0, 180)
 _GUICtrlListView_SetColumnWidth($idListview, 1, 90)
-_GUICtrlListView_SetColumnWidth($idListview, 2, 60)
-_GUICtrlListView_SetColumnWidth($idListview, 3, 70)
-_GUICtrlListView_SetColumnWidth($idListview, 4, 80)
-_GUICtrlListView_SetColumnWidth($idListview, 5, 80)
+_GUICtrlListView_SetColumnWidth($idListview, 2, 70)
+_GUICtrlListView_SetColumnWidth($idListview, 3, 90)
+_GUICtrlListView_SetColumnWidth($idListview, 4, 110)
+_GUICtrlListView_SetColumnWidth($idListview, 5, 110)
 _GUICtrlListView_SetExtendedListViewStyle($idListview, BitOR($LVS_EX_FULLROWSELECT, $LVS_EX_SUBITEMIMAGES))
 
 ; Load system shell icons matching individual executable instances
@@ -132,7 +141,8 @@ For $i = 0 To $iBrowserCount - 1
     $aLastCounts[$i] = -1
 Next
 
-$idStatus = GUICtrlCreateLabel("Ready", 10, 280, 560, 20)
+$idStatus = GUICtrlCreateLabel("Ready", 10, 280, 680, 20)
+GUICtrlSetColor($idStatus, 0x858585) ; Muted gray text
 
 ; Force system tray parameters active
 TraySetState(1)
@@ -176,8 +186,10 @@ $idDummySendToBack = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummySendToBack, "_OnSendToBack")
 $idDummyMinimizeToggle = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyMinimizeToggle, "_OnMinimizeToggle")
+$idDummyEnter = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyEnter, "_OnEnterPressed")
 
-Local $aAccelKeys[100][2]
+Local $aAccelKeys[110][2]
 Local $idx = 0
 
 ; 1. Map Browser Launch, Close, and Focus binds (handling both lower & upper case letters to prevent Shift/Capslock issues)
@@ -268,6 +280,10 @@ $aAccelKeys[$idx][0] = "{BACKSPACE}"
 $aAccelKeys[$idx][1] = $idDummySendToBack
 $idx += 1
 
+$aAccelKeys[$idx][0] = "{ENTER}"
+$aAccelKeys[$idx][1] = $idDummyEnter
+$idx += 1
+
 ; ReDim the array to the exact count of mapped keys to avoid empty/unpopulated trailing rows which fail GUISetAccelerators
 ReDim $aAccelKeys[$idx][2]
 
@@ -328,9 +344,9 @@ Func _HandleZOrderSelection()
     If Not $bGUI_Visible Then
         $bDeFocused = True
     Else
-        Local $hFocusedCtrl = ControlGetFocus($hGUI)
+        Local $hFocusedCtrl = ControlGetHandle($hGUI, "", ControlGetFocus($hGUI))
         Local $hListviewHandle = GUICtrlGetHandle($idListview)
-        If Int($hFocusedCtrl) <> Int($hListviewHandle) Then
+        If $hFocusedCtrl <> $hListviewHandle Then
             $bDeFocused = True
         EndIf
     EndIf
@@ -339,7 +355,7 @@ Func _HandleZOrderSelection()
         Local $iSelected = _GUICtrlListView_GetSelectedIndices($idListview)
         If $iSelected = "" Then
             $bDeFocused = True
-        EndIf
+        Endif
     EndIf
     
     If $bDeFocused Then
@@ -351,11 +367,21 @@ Func _HandleZOrderSelection()
             $hLastPrevWin = 0
             _ClearOrangeBorder()
         EndIf
+        If $iLastSelectionIndex <> -1 Then
+            $iLastSelectionIndex = -1
+            Beep(800, 100) ; Defocus beep
+        EndIf
         Return
     EndIf
     
     Local $iSelected = _GUICtrlListView_GetSelectedIndices($idListview)
     Local $iIdx = Int($iSelected)
+    
+    If $iIdx <> $iLastSelectionIndex Then
+        $iLastSelectionIndex = $iIdx
+        Beep(1000, 100) ; Selection beep
+    EndIf
+    
     Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $aBrowsers[$iIdx][1] & "$]")
     If $aWinList[0][0] > 0 Then
         Local $hTargetWin = $aWinList[1][1] ; Highest window frame in Z-Order
@@ -551,6 +577,8 @@ Func _HandleAction($iIndex, $bClose)
         If $hTargetWin <> 0 Then
             WinClose($hTargetWin) ; Closes strictly the highest Z-order visible window frame matching the browser
             GUICtrlSetData($idStatus, "Closed top window of: " & $sName)
+            WinActivate($hGUI)
+            ControlFocus($hGUI, "", $idListview)
         EndIf
     Else
         If $hTargetWin <> 0 Then
@@ -577,6 +605,8 @@ Func _OnMinimizeToggle()
     Else
         WinSetState($hWnd, "", @SW_MINIMIZE)
         GUICtrlSetData($idStatus, "Minimized selected browser window")
+        WinActivate($hGUI)
+        ControlFocus($hGUI, "", $idListview)
     EndIf
     _PopulateList($aIconIndices)
 EndFunc
@@ -731,41 +761,122 @@ Func _OnShortcut()
     Next
 EndFunc
 
+Func _OnEnterPressed()
+    Local $iSelected = _GUICtrlListView_GetSelectedIndices($idListview)
+    If $iSelected <> "" Then
+        _HandleAction(Int($iSelected), False)
+    EndIf
+EndFunc
+
 Func _OnGridHotkey()
     Local $idPressed = @GUI_CtrlId
-    Local $hWnd = _GetSelectedBrowserWindow()
-    If Not $hWnd Then Return
+    Local $hWndIn = _GetSelectedBrowserWindow()
+    If Not $hWndIn Then Return
     
-    Local $iPos = -1
+    Local $iTargetPos = -1
     If $idPressed = $aDummyGrid[0] Then
-        $iPos = 0
+        $iTargetPos = 0
     Else
         For $i = 1 To 9
             If $idPressed = $aDummyGrid[$i] Then
-                $iPos = $i
+                $iTargetPos = $i
                 ExitLoop
             EndIf
         Next
     EndIf
-    If $iPos = -1 Then Return
+    If $iTargetPos = -1 Then Return
     
-    Local $iW = @DesktopWidth, $iH = @DesktopHeight
-    If $iPos = 0 Then
-        Local $iNewW = Int($iW * 5 / 9)
-        Local $iNewH = Int($iH * 5 / 9)
-        Local $iNewX = Int(($iW - $iNewW) / 2)
-        Local $iNewY = Int(($iH - $iNewH) / 2)
-        WinMove($hWnd, "", $iNewX, $iNewY, $iNewW, $iNewH)
-        _DrawOrangeBorder($hWnd)
-        Return
+    Local $hWndOcc = _GetWindowAtGridPosition($iTargetPos)
+    If $hWndOcc <> 0 And $hWndOcc <> $hWndIn Then
+        Local $sPosIn = _GetGridPosition($hWndIn)
+        If $sPosIn <> "None" Then
+            ; Swap positions!
+            Local $iPosIn = Int($sPosIn)
+            _MoveWindowToGridPosition($hWndIn, $iTargetPos)
+            _MoveWindowToGridPosition($hWndOcc, $iPosIn)
+            GUICtrlSetData($idStatus, "Swapped positions of " & StringLeft(WinGetTitle($hWndIn), 20) & " and " & StringLeft(WinGetTitle($hWndOcc), 20))
+        Else
+            ; Find first available position starting from 9 and going backwards
+            Local $iAvailablePos = -1
+            For $p = 9 DownTo 1
+                If _GetWindowAtGridPosition($p) = 0 Then
+                    $iAvailablePos = $p
+                    ExitLoop
+                EndIf
+            Next
+            ; Check position 0 (center) as well
+            If $iAvailablePos = -1 And _GetWindowAtGridPosition(0) = 0 Then
+                $iAvailablePos = 0
+            EndIf
+            
+            If $iAvailablePos <> -1 Then
+                _MoveWindowToGridPosition($hWndOcc, $iAvailablePos)
+                _MoveWindowToGridPosition($hWndIn, $iTargetPos)
+                GUICtrlSetData($idStatus, "Moved occupying window to grid " & $iAvailablePos & " and incoming to " & $iTargetPos)
+            Else
+                ; Re-use position but offset by 30px
+                _MoveWindowToGridPosition($hWndOcc, $iTargetPos, 30)
+                _MoveWindowToGridPosition($hWndIn, $iTargetPos)
+                GUICtrlSetData($idStatus, "Occupied! Offset occupying window at grid " & $iTargetPos & " by 30px")
+            EndIf
+        EndIf
+    Else
+        _MoveWindowToGridPosition($hWndIn, $iTargetPos)
+        GUICtrlSetData($idStatus, "Moved window to grid " & $iTargetPos)
     EndIf
     
-    Local $col = Mod($iPos - 1, 3)
-    Local $row = Int(($iPos - 1) / 3)
-    Local $cellW = Int($iW / 3)
-    Local $cellH = Int($iH / 3)
-    WinMove($hWnd, "", $col * $cellW, $row * $cellH, $cellW, $cellH)
-    _DrawOrangeBorder($hWnd)
+    _DrawOrangeBorder($hWndIn)
+    _PopulateList($aIconIndices)
+EndFunc
+
+Func _GetAllVisibleBrowserWindows()
+    Local $aResult[100]
+    Local $iCount = 0
+    For $b = 0 To $iBrowserCount - 1
+        Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $aBrowsers[$b][1] & "$]")
+        For $w = 1 To $aWinList[0][0]
+            Local $hWnd = $aWinList[$w][1]
+            If BitAND(WinGetState($hWnd), 2) And Not BitAND(WinGetState($hWnd), 16) Then
+                $aResult[$iCount] = $hWnd
+                $iCount += 1
+            EndIf
+        Next
+    Next
+    ReDim $aResult[$iCount]
+    Return $aResult
+EndFunc
+
+Func _GetWindowAtGridPosition($iPos)
+    Local $aWins = _GetAllVisibleBrowserWindows()
+    For $i = 0 To UBound($aWins) - 1
+        If _GetGridPosition($aWins[$i]) = String($iPos) Then
+            Return $aWins[$i]
+        EndIf
+    Next
+    Return 0
+EndFunc
+
+Func _GetGridCoordinates($iPos, ByRef $iX, ByRef $iY, ByRef $iW, ByRef $iH)
+    Local $iDeskW = @DesktopWidth, $iDeskH = @DesktopHeight
+    If $iPos = 0 Then
+        $iW = Int($iDeskW * 5 / 9)
+        $iH = Int($iDeskH * 5 / 9)
+        $iX = Int(($iDeskW - $iW) / 2)
+        $iY = Int(($iDeskH - $iH) / 2)
+    Else
+        Local $col = Mod($iPos - 1, 3)
+        Local $row = Int(($iPos - 1) / 3)
+        $iW = Int($iDeskW / 3)
+        $iH = Int($iDeskH / 3)
+        $iX = $col * $iW
+        $iY = $row * $iH
+    EndIf
+EndFunc
+
+Func _MoveWindowToGridPosition($hWnd, $iPos, $iOffset = 0)
+    Local $iX, $iY, $iW, $iH
+    _GetGridCoordinates($iPos, $iX, $iY, $iW, $iH)
+    WinMove($hWnd, "", $iX + $iOffset, $iY + $iOffset, $iW, $iH)
 EndFunc
 
 Func _OnNewTab()

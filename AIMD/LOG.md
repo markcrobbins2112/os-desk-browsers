@@ -25,15 +25,38 @@
 ## 💾 Commit Message
 [[#^toc-commit|TOC]]
 ```text
-feat: implement dynamic Z-order window promotion on focus and restoration on defocus
+feat: implement grid collision snapping with swaps, dark theme, and focus feedback
 
-- Automatically promotes the highest window of the selected browser to the top of Z-order and applies the orange highlight border when focused/selected.
-- Dynamically restores the selected window to its exact original Z-order position and removes the orange border when de-focused (unselected, listview loses focus, or manager minimizes/hides).
-- Robustly handles process exit and window destruction states to prevent orphaned tracking handles.
+- Widen GUI to 700px and implemented a complete professional, low-glare dark visual theme.
+- Fixed the ListView focus check to correctly activate focus highlights and orange window borders.
+- Implemented a collision-aware grid layout snapping algorithm with back-seeking available slots and 30px offset fail-safes.
+- Added dynamic selection change audio beeps (1000Hz) and focus restore on window minimizes/closes.
+- Mapped Enter hotkey to launch or activate selected browser window.
 ```
 
 ## 📝 Log Entries
 [[#^toc-entries|TOC]]
+
+### 📅 [2026-06-27T17:05:00-07:00]
+#### 🎯 Primary Goals & Requirements
+- Widen the UI and apply a stylish dark theme.
+- Play a beep when the list selection focus indicator changes.
+- Fix items window focus promotion and orange border drawing (resolved ClassNameNN string check bug).
+- Map Enter key to launch or activate the selected browser.
+- Return focus to the manager UI on browser window minimize or close.
+- Support collision-aware grid window placement: swap positions if occupied, find backward open positions (9 down to 1), or reuse with 30px offsets.
+
+#### 🛠️ Completed Changes in this Session
+- Redesigned UI styling with `GUISetBkColor(0x1E1E1E)`, `GUICtrlSetColor` (0xE0E0E0/0x858585), and listview background color matching deep carbon styles.
+- Corrected focused control check to retrieve window handles using `ControlGetHandle($hGUI, "", ControlGetFocus($hGUI))` instead of string conversion comparison.
+- Added tracking variable `$iLastSelectionIndex` and integrated `Beep()` sounds on focus indicator transitions.
+- Created `$idDummyEnter` mapped to `{ENTER}` to execute `_HandleAction(..., False)`.
+- Replaced `_OnGridHotkey` with a collision resolution solver including swapping, backward-search scanning, and `_MoveWindowToGridPosition` helpers.
+
+#### 🔸 Affected Files
+- `/desk-browsers.au3`
+
+---
 
 ### 📅 [2026-06-27T16:45:00-07:00]
 #### 🎯 Primary Goals & Requirements

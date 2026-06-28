@@ -38,6 +38,12 @@
 - [x] Review, reverse engineer, and fully document all markdown developer files.
 - [x] Fix completely broken accelerator keys in the window manager GUI.
 - [x] Implement dynamic Z-order browser promotion on focus/selection and restoration on defocus/unselection.
+- [x] Play a selection beep sound (1000Hz) when list focus indicator changes.
+- [x] Fix the ListView focus check bug so focus highlighting and orange window border drawing activates immediately.
+- [x] Map Enter hotkey to launch or activate selected browser window.
+- [x] Return focus to the manager UI upon closing or minimizing a browser window.
+- [x] Design a wider (700px) layout with a sleek low-glare dark visual theme.
+- [x] Implement collision-aware grid placement algorithm (swaps on occupied, backward scans 9 down to 1, or offset overlays by 30px).
 
 ## 🔄 New Changes
 [[#^toc-changes|TOC]]
@@ -45,6 +51,9 @@
 - [x] Clean up and delete obsolete split structures.
 - [x] Redimension accelerator array to exact mapped bounds to resolve `GUISetAccelerators` registration errors.
 - [x] Redesign `_HandleZOrderSelection` to support focus promotion and exact defocus restoration.
+- [x] Configure carbon theme colors on main window and listview controls.
+- [x] Implement the `_OnEnterPressed` callback handler.
+- [x] Implement the `_GetAllVisibleBrowserWindows`, `_GetWindowAtGridPosition`, `_GetGridCoordinates`, and `_MoveWindowToGridPosition` collision handling helpers.
 
 ## ⚙️ New Settings
 [[#^toc-new-settings|TOC]]
