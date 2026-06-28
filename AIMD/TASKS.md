@@ -57,6 +57,14 @@
 - [x] Map Esc to close the Help dialog gracefully.
 - [x] Remove iframe-like border around the HTML in the embedded Help viewer.
 - [x] Map Ctrl+PageUp and Ctrl+PageDown to cycle all windows currently on the grid to adjacent positions.
+- [x] Map Ctrl+C to copy URL of the indicated browser window.
+- [x] Map Ctrl+Shift+PageUp and Ctrl+Shift+PageDown to move the indicated browser's active tab left and right.
+- [x] Map Insert to open a new empty tab on the indicated browser window.
+- [x] Map Ctrl+V and Shift+Insert to create a new tab on the indicated browser with the clipboard URL.
+- [x] Map Shift+Enter to create a new browser window with the current tab's URL.
+- [x] Map F1 to open the Help guide window.
+- [x] Map Esc within the Help GUI context to close it instantly.
+- [x] Map Ctrl+Shift+0-9 to copy the current window's URL and open it as a new tab on the browser window at that grid position.
 
 ## 🔄 New Changes
 [[#^toc-changes|TOC]]

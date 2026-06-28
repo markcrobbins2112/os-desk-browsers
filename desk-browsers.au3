@@ -61,6 +61,13 @@ Global $idDummyEnter
 Global $bHelpClosed = False
 Global $hHelpGUI = 0
 
+Global $idDummyMoveTabLeft
+Global $idDummyMoveTabRight
+Global $idDummyNewTabWithClipboard
+Global $idDummyNewWindowWithCurrentUrl
+Global $idDummyHelp
+Global $aDummyGridNewTab[10]
+
 Global $idHelpBtn
 Global $idListview
 Global $hGUI
@@ -177,6 +184,8 @@ For $i = 0 To 9
     GUICtrlSetOnEvent($aDummyGrid[$i], "_OnGridHotkey")
     $aDummyFocusGrid[$i] = GUICtrlCreateDummy()
     GUICtrlSetOnEvent($aDummyFocusGrid[$i], "_OnFocusGridHotkey")
+    $aDummyGridNewTab[$i] = GUICtrlCreateDummy()
+    GUICtrlSetOnEvent($aDummyGridNewTab[$i], "_OnNewTabAtGridHotkey")
 Next
 For $i = 1 To 9
     $aDummySwap[$i-1] = GUICtrlCreateDummy()
@@ -186,7 +195,7 @@ Next
 $idDummyEscape = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyEscape, "_MinimizeToTray")
 $idDummyInsert = GUICtrlCreateDummy()
-GUICtrlSetOnEvent($idDummyInsert, "_OnNewTab")
+GUICtrlSetOnEvent($idDummyInsert, "_OnInsertPressed")
 $idDummyDelete = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyDelete, "_OnDeletePressed")
 $idDummyPageUp = GUICtrlCreateDummy()
@@ -211,6 +220,17 @@ $idDummyMinimizeToggle = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyMinimizeToggle, "_OnMinimizeToggle")
 $idDummyEnter = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyEnter, "_OnEnterPressed")
+
+$idDummyMoveTabLeft = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyMoveTabLeft, "_OnMoveTabLeft")
+$idDummyMoveTabRight = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyMoveTabRight, "_OnMoveTabRight")
+$idDummyNewTabWithClipboard = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyNewTabWithClipboard, "_OnNewTabWithClipboard")
+$idDummyNewWindowWithCurrentUrl = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyNewWindowWithCurrentUrl, "_OnNewWindowWithCurrentUrl")
+$idDummyHelp = GUICtrlCreateDummy()
+GUICtrlSetOnEvent($idDummyHelp, "_OnHelpPressed")
 
 Local $aAccelKeys[150][2]
 Local $idx = 0
@@ -264,6 +284,10 @@ For $i = 1 To 9
     $aAccelKeys[$idx][0] = "!" & String($i)
     $aAccelKeys[$idx][1] = $aDummyFocusGrid[$i]
     $idx += 1
+    
+    $aAccelKeys[$idx][0] = "^+" & String($i)
+    $aAccelKeys[$idx][1] = $aDummyGridNewTab[$i]
+    $idx += 1
 Next
 
 ; 3. Map System and Utility hotkey rules (10 slots)
@@ -273,6 +297,10 @@ $idx += 1
 
 $aAccelKeys[$idx][0] = "!0"
 $aAccelKeys[$idx][1] = $aDummyFocusGrid[0]
+$idx += 1
+
+$aAccelKeys[$idx][0] = "^+0"
+$aAccelKeys[$idx][1] = $aDummyGridNewTab[0]
 $idx += 1
 
 $aAccelKeys[$idx][0] = "{ESC}"
@@ -303,6 +331,14 @@ $aAccelKeys[$idx][0] = "^{PGDN}"
 $aAccelKeys[$idx][1] = $idDummyCycleNext
 $idx += 1
 
+$aAccelKeys[$idx][0] = "^+{PGUP}"
+$aAccelKeys[$idx][1] = $idDummyMoveTabLeft
+$idx += 1
+
+$aAccelKeys[$idx][0] = "^+{PGDN}"
+$aAccelKeys[$idx][1] = $idDummyMoveTabRight
+$idx += 1
+
 $aAccelKeys[$idx][0] = "!{PGUP}"
 $aAccelKeys[$idx][1] = $idDummySiblingUp
 $idx += 1
@@ -323,6 +359,14 @@ $aAccelKeys[$idx][0] = "^c"
 $aAccelKeys[$idx][1] = $idDummyCopyUrl
 $idx += 1
 
+$aAccelKeys[$idx][0] = "^v"
+$aAccelKeys[$idx][1] = $idDummyNewTabWithClipboard
+$idx += 1
+
+$aAccelKeys[$idx][0] = "+{INS}"
+$aAccelKeys[$idx][1] = $idDummyNewTabWithClipboard
+$idx += 1
+
 $aAccelKeys[$idx][0] = "-"
 $aAccelKeys[$idx][1] = $idDummyMinimizeToggle
 $idx += 1
@@ -333,6 +377,14 @@ $idx += 1
 
 $aAccelKeys[$idx][0] = "{ENTER}"
 $aAccelKeys[$idx][1] = $idDummyEnter
+$idx += 1
+
+$aAccelKeys[$idx][0] = "+{ENTER}"
+$aAccelKeys[$idx][1] = $idDummyNewWindowWithCurrentUrl
+$idx += 1
+
+$aAccelKeys[$idx][0] = "{F1}"
+$aAccelKeys[$idx][1] = $idDummyHelp
 $idx += 1
 
 ; ReDim the array to the exact count of mapped keys to avoid empty/unpopulated trailing rows which fail GUISetAccelerators
@@ -511,7 +563,8 @@ EndFunc
 
 ; Automatically focus address text bounds and copy path URL strings
 Func _OnCopyUrl()
-    Local $hWnd = _GetSelectedBrowserWindow()
+    Local $hWnd = $hLastSelectedWin
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
     If Not $hWnd Then Return
     Local $sOldClip = ClipGet()
     ClipPut("")
@@ -992,6 +1045,7 @@ Func _ShowHelp()
         "</html>"
     
     $oIE.document.write($sHTML)
+    $oIE.document.body.style.border = "none"
     
     ; Native styled close button at the bottom
     Local $idCloseBtn = GUICtrlCreateButton("Close Help Guide", 205, 515, 200, 32)
@@ -1002,6 +1056,9 @@ Func _ShowHelp()
     ; Setup events for Help GUI
     GUISetOnEvent(-3, "_HelpGUI_Close", $hHelpGUI) ; -3 is $GUI_EVENT_CLOSE
     GUICtrlSetOnEvent($idCloseBtn, "_HelpGUI_Close")
+    
+    Local $aHelpAccel[1][2] = [["{ESC}", $idCloseBtn]]
+    GUISetAccelerators($aHelpAccel, $hHelpGUI)
     
     GUISetState(@SW_SHOW, $hHelpGUI)
 EndFunc
@@ -1298,15 +1355,165 @@ Func _MoveWindowToGridPosition($hWnd, $iPos, $iOffset = 0)
     WinMove($hWnd, "", $iX + $iOffset, $iY + $iOffset, $iW, $iH)
 EndFunc
 
-Func _OnNewTab()
-    Local $iSelected = _GUICtrlListView_GetSelectedIndices($idListview)
-    If $iSelected = "" Then Return
-    Local $sPath = $aBrowsers[Int($iSelected)][2]
-    Local $sUrl = ClipGet()
-    If StringLeft($sUrl, 4) = "http" Or StringInStr($sUrl, ".") > 0 Then
-        ShellExecute($sPath, $sUrl)
-        GUICtrlSetData($idStatus, "Opened URL tab from Clipboard")
+Func _OnInsertPressed()
+    Local $hWnd = $hLastSelectedWin
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
+    If $hWnd Then 
+        Local $hActivePrev = WinGetHandle("[ACTIVE]")
+        WinActivate($hWnd)
+        Sleep(50)
+        Send("^t")
+        Sleep(50)
+        If $hActivePrev Then WinActivate($hActivePrev)
+        GUICtrlSetData($idStatus, "Created new tab on indicated window")
     EndIf
+EndFunc
+
+Func _OnMoveTabLeft()
+    Local $hWnd = $hLastSelectedWin
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
+    If $hWnd Then 
+        Local $hActivePrev = WinGetHandle("[ACTIVE]")
+        WinActivate($hWnd)
+        Sleep(50)
+        Send("^+{PGUP}")
+        Sleep(50)
+        If $hActivePrev Then WinActivate($hActivePrev)
+        GUICtrlSetData($idStatus, "Moved active tab left on indicated window")
+    EndIf
+EndFunc
+
+Func _OnMoveTabRight()
+    Local $hWnd = $hLastSelectedWin
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
+    If $hWnd Then 
+        Local $hActivePrev = WinGetHandle("[ACTIVE]")
+        WinActivate($hWnd)
+        Sleep(50)
+        Send("^+{PGDN}")
+        Sleep(50)
+        If $hActivePrev Then WinActivate($hActivePrev)
+        GUICtrlSetData($idStatus, "Moved active tab right on indicated window")
+    EndIf
+EndFunc
+
+Func _OnNewTabWithClipboard()
+    Local $hWnd = $hLastSelectedWin
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
+    If $hWnd Then 
+        Local $sUrl = ClipGet()
+        If $sUrl <> "" Then
+            Local $hActivePrev = WinGetHandle("[ACTIVE]")
+            WinActivate($hWnd)
+            Sleep(50)
+            Send("^t")
+            Sleep(150)
+            Send("^v")
+            Sleep(50)
+            Send("{ENTER}")
+            Sleep(50)
+            If $hActivePrev Then WinActivate($hActivePrev)
+            GUICtrlSetData($idStatus, "Opened clipboard URL in new tab")
+        Else
+            GUICtrlSetData($idStatus, "Clipboard is empty")
+        EndIf
+    EndIf
+EndFunc
+
+Func _OnNewWindowWithCurrentUrl()
+    Local $hWnd = $hLastSelectedWin
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
+    If $hWnd Then
+        Local $sOldClip = ClipGet()
+        ClipPut("")
+        Local $hActivePrev = WinGetHandle("[ACTIVE]")
+        WinActivate($hWnd)
+        Sleep(50)
+        Send("^l")
+        Sleep(100)
+        Send("^c")
+        Sleep(150)
+        Local $sUrl = ClipGet()
+        If $sUrl <> "" Then
+            Send("^n")
+            Sleep(250)
+            Send("^v")
+            Sleep(50)
+            Send("{ENTER}")
+            Sleep(50)
+        Else
+            Send("^n")
+            Sleep(50)
+        EndIf
+        If $hActivePrev Then WinActivate($hActivePrev)
+        GUICtrlSetData($idStatus, "Created new window with current URL")
+    EndIf
+EndFunc
+
+Func _OnHelpPressed()
+    _ShowHelp()
+EndFunc
+
+Func _OnNewTabAtGridHotkey()
+    Local $idPressed = @GUI_CtrlId
+    Local $iTargetPos = -1
+    If $idPressed = $aDummyGridNewTab[0] Then
+        $iTargetPos = 0
+    Else
+        For $i = 1 To 9
+            If $idPressed = $aDummyGridNewTab[$i] Then
+                $iTargetPos = $i
+                ExitLoop
+            Endif
+        Next
+    Endif
+    If $iTargetPos = -1 Then Return
+    
+    Local $hCurrentWin = $hLastSelectedWin
+    If Not $hCurrentWin Or Not _WinAPI_IsWindow($hCurrentWin) Then $hCurrentWin = _GetSelectedBrowserWindow()
+    If Not $hCurrentWin Then
+        GUICtrlSetData($idStatus, "No current browser window to copy URL from")
+        Return
+    EndIf
+    
+    Local $hTargetWin = _GetWindowAtGridPosition($iTargetPos)
+    If Not $hTargetWin Or Not _WinAPI_IsWindow($hTargetWin) Then
+        GUICtrlSetData($idStatus, "No browser window at grid position " & $iTargetPos)
+        Return
+    EndIf
+    
+    If $hCurrentWin = $hTargetWin Then
+        GUICtrlSetData($idStatus, "Target and current windows are the same")
+        Return
+    EndIf
+    
+    Local $sOldClip = ClipGet()
+    ClipPut("")
+    Local $hActivePrev = WinGetHandle("[ACTIVE]")
+    WinActivate($hCurrentWin)
+    Sleep(50)
+    Send("^l")
+    Sleep(100)
+    Send("^c")
+    Sleep(150)
+    Local $sUrl = ClipGet()
+    
+    If $sUrl <> "" Then
+        WinActivate($hTargetWin)
+        Sleep(50)
+        Send("^t")
+        Sleep(150)
+        Send("^v")
+        Sleep(50)
+        Send("{ENTER}")
+        Sleep(50)
+        GUICtrlSetData($idStatus, "Opened new tab at grid " & $iTargetPos & " with current URL")
+    Else
+        GUICtrlSetData($idStatus, "Failed to copy URL from current window")
+        ClipPut($sOldClip)
+    EndIf
+    
+    If $hActivePrev Then WinActivate($hActivePrev)
 EndFunc
 
 Func _OnTabLeft()

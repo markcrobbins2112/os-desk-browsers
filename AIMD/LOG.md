@@ -40,6 +40,30 @@ feat: implement dynamic z-order restoration, tab/sibling navigation hotkeys, ric
 ## 📝 Log Entries
 [[#^toc-entries|TOC]]
 
+### 📅 [2026-06-28T01:35:00-07:00]
+#### 🎯 Primary Goals & Requirements
+- Map `Ctrl+C` to copy the URL of the indicated browser.
+- Map `Ctrl+Shift+PageUp` and `Ctrl+Shift+PageDown` to move the indicated browser's active tab left and right.
+- Map `Insert` to open a new tab on the indicated browser.
+- Map `Ctrl+V` and `Shift+Insert` to make a new tab with the clipboard URL on the indicated browser.
+- Map `Shift+Enter` to create a new window with the current URL of the indicated browser.
+- Map `F1` to open the Help dialog guide.
+- Map `Esc` within the Help GUI context to close it instantly.
+- Map `Ctrl+Shift+0-9` to open a new tab of the window on that grid position with the URL of the current window.
+
+#### 🛠️ Completed Changes in this Session
+- Refactored `_OnCopyUrl()` to prioritize the indicated window (`$hLastSelectedWin`) and fallback to the selected browser.
+- Created `_OnMoveTabLeft()` and `_OnMoveTabRight()` to activate the target window, send `^+{PGUP}`/`^+{PGDN}`, and restore active focus.
+- Refactored `{INS}` to call `_OnInsertPressed()` which opens a blank new tab on the indicated browser window.
+- Implemented `_OnNewTabWithClipboard()` for `^v` and `+{INS}` keys to open a new tab and paste/navigate to the clipboard content.
+- Implemented `_OnNewWindowWithCurrentUrl()` for `+{ENTER}` to grab the URL from the indicated window, open a new browser window, and navigate to that URL.
+- Added `{F1}` to call `_OnHelpPressed()` which shows the guide.
+- Bound `{ESC}` as a dedicated accelerator inside the Help GUI to trigger close immediately when Help is focused.
+- Implemented `_OnNewTabAtGridHotkey()` to capture the current indicated window's URL, activate the browser at the targeted grid position, open a new tab, and paste the URL.
+
+#### 🔸 Affected Files
+- `/desk-browsers.au3`
+
 ### 📅 [2026-06-28T01:15:00-07:00]
 #### 🎯 Primary Goals & Requirements
 - Implement Alt+0-9 keys to instantly move focus indicator (orange border) and promote the corresponding grid-positioned window to the top of the Z-order.
