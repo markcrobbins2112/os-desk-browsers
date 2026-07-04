@@ -38,18 +38,27 @@ Func _DrawOrangeBorder($hTarget)
     Local $fScaleX = $iDpiX / 96
     Local $fScaleY = $iDpiY / 96
 
-    ; 2. Maintain floating overlay window canvas exactly at target window coordinates
+    ; ==============================================================================
+    ; 2. MAINTAIN FLOATING OVERLAY WINDOW CANVAS (UPGRADED BOUNDS PLACEMENT)
+    ; ==============================================================================
+    ; VISUAL FIX: We slightly pad the width/height (+4) and offset the X/Y (-2)
+    ; This makes our frame perfectly hug the exterior shell of your window!
+    Local $iCanvasX = $aPos[0] - 2
+    Local $iCanvasY = $aPos[1] - 2
+    Local $iCanvasW = $aPos[2] + 4
+    Local $iCanvasH = $aPos[3] + 4
+
     If $hBorderWin = 0 Or Not _WinAPI_IsWindow($hBorderWin) Then
-        $hBorderWin = GUICreate("", $aPos[2], $aPos[3], $aPos[0], $aPos[1], 0x80000000, BitOR(0x00080000, 0x00000020, 0x00000008)) 
+        $hBorderWin = GUICreate("", $iCanvasW, $iCanvasH, $iCanvasX, $iCanvasY, 0x80000000, BitOR(0x00080000, 0x00000020, 0x00000008)) 
         GUISetBkColor(0xABCDEF, $hBorderWin) 
         _WinAPI_SetLayeredWindowAttributes($hBorderWin, 0xABCDEF, 255, 1) 
         GUISetState(4, $hBorderWin) 
     Else
         Local $aCurrentBorderPos = WinGetPos($hBorderWin)
         If IsArray($aCurrentBorderPos) Then
-            If $aCurrentBorderPos[0] <> $aPos[0] Or $aCurrentBorderPos[1] <> $aPos[1] Or $aCurrentBorderPos[2] <> $aPos[2] Or $aCurrentBorderPos[3] <> $aPos[3] Then
+            If $aCurrentBorderPos[0] <> $iCanvasX Or $aCurrentBorderPos[1] <> $iCanvasY Or $aCurrentBorderPos[2] <> $iCanvasW Or $aCurrentBorderPos[3] <> $iCanvasH Then
                 Local Const $HWND_TOPMOST = -1
-                _WinAPI_SetWindowPos($hBorderWin, $HWND_TOPMOST, $aPos[0], $aPos[1], $aPos[2], $aPos[3], $SWP_NOACTIVATE)
+                _WinAPI_SetWindowPos($hBorderWin, $HWND_TOPMOST, $iCanvasX, $iCanvasY, $iCanvasW, $iCanvasH, $SWP_NOACTIVATE)
             EndIf
         EndIf
     EndIf
@@ -57,8 +66,6 @@ Func _DrawOrangeBorder($hTarget)
     ; ==============================================================================
     ; 3. THE LIVE SWITCH: HARD UNLINK OLD CHANNELS & FORCE NEW LIVE STREAM
     ; ==============================================================================
-    ; WE REMOVED THE CHOKING "If $hLastSelectedWin <> $hTarget Then" LINE ENTIRELY
-    
     ; Step A: Forcefully kill any lingering window video feeds before making a new one
     If $hDwmThumbnail <> 0 Then
         DllCall("dwmapi.dll", "long", "DwmUnregisterThumbnail", "ptr", $hDwmThumbnail)
@@ -75,34 +82,44 @@ Func _DrawOrangeBorder($hTarget)
     
     ; Extract the correct unique thumbnail ID token from array item [3]
     If Not @error And IsArray($aResult) And $aResult[0] = 0 Then
-        $hDwmThumbnail = $aResult[3] ; <-- PROPERLY ASSIGNS TARGET INDEX PARAMETER 3
+        $hDwmThumbnail = $aResult[3] 
         
         Local $tProps = DllStructCreate("dword dwFlags;int rcDestLeft;int rcDestTop;int rcDestRight;int rcDestBottom;int rcSrcLeft;int rcSrcTop;int rcSrcRight;int rcSrcBottom;byte opacity;bool fVisible;bool fSourceClientAreaOnly")
         DllStructSetData($tProps, "dwFlags", BitOR(0x1, 0x4, 0x8)) 
         DllStructSetData($tProps, "fVisible", True)
         DllStructSetData($tProps, "opacity", 255) 
         
+        ; Adjust the DWM stream to skip our 2px padding on the left/top edges 
         Local $iPhysWidth = Int($aPos[2] * $fScaleX)
         Local $iPhysHeight = Int($aPos[3] * $fScaleY)
+        Local $iOffsetX = Int(2 * $fScaleX)
+        Local $iOffsetY = Int(2 * $fScaleY)
         
-        DllStructSetData($tProps, "rcDestLeft", 0)
-        DllStructSetData($tProps, "rcDestTop", 0)
-        DllStructSetData($tProps, "rcDestRight", $iPhysWidth)
-        DllStructSetData($tProps, "rcDestBottom", $iPhysHeight)
+        DllStructSetData($tProps, "rcDestLeft", $iOffsetX)
+        DllStructSetData($tProps, "rcDestTop", $iOffsetY)
+        DllStructSetData($tProps, "rcDestRight", $iOffsetX + $iPhysWidth)
+        DllStructSetData($tProps, "rcDestBottom", $iOffsetY + $iPhysHeight)
         
         DllCall("dwmapi.dll", "long", "DwmUpdateThumbnailProperties", "ptr", $hDwmThumbnail, "ptr", DllStructGetPtr($tProps))
     EndIf
     
-    $hLastSelectedWin = $hTarget ; Bookmark the selected window safely for reference
+    $hLastSelectedWin = $hTarget 
     ; ==============================================================================
 
-    ; 4. Trace overlaying orange highlight border frame
+    ; ==============================================================================
+    ; 4. TRACE OVERLAYING ORANGE HIGHLIGHT BORDER (UPGRADED TO 4PX GLOW CHASSIS)
+    ; ==============================================================================
+    ; Change this color hex code to whatever color value you prefer!
+    Local $iIndicatorColor = 0xFF6600 ; Vibrant Glowing Orange
+
     Local $hDC = _WinAPI_GetWindowDC($hBorderWin)
-    Local $hRect = _WinAPI_CreateRectRgn(0, 0, $aPos[2], $aPos[3])
-    Local $hInnerRect = _WinAPI_CreateRectRgn(2, 2, $aPos[2] - 2, $aPos[3] - 2)
+    Local $hRect = _WinAPI_CreateRectRgn(0, 0, $iCanvasW, $iCanvasH)
+    
+    ; INCREASED THICKNESS PARAMETERS: Set inner region bounds cut out to 4px
+    Local $hInnerRect = _WinAPI_CreateRectRgn(4, 4, $iCanvasW - 4, $iCanvasH - 4)
     _WinAPI_CombineRgn($hRect, $hRect, $hInnerRect, $RGN_DIFF)
 
-    Local $hBrush = _WinAPI_CreateSolidBrush(0xFF6600) 
+    Local $hBrush = _WinAPI_CreateSolidBrush($iIndicatorColor) 
     _WinAPI_FillRgn($hDC, $hRect, $hBrush)
 
     _WinAPI_DeleteObject($hBrush)
