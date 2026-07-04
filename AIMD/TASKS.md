@@ -37,6 +37,10 @@ title: TASKS
 
 ## 💬 Incoming tasks from chat
 [[#^toc-chat|TOC]]
+- [x] Externalize all browser names, match patterns, local execution paths, exe names, and hotkeys to `desk-browsers.ini` and build an dynamic bootstrapper load engine.
+- [x] Integrate a high-contrast orange "Copy Cheat Sheet" button onto the Help Guide Dialog.
+- [x] Code `_HelpGUI_CopyCheatSheet()` to format and write a beautifully organized plain-text shortcut guide category directly to the clipboard.
+- [x] Implement a temporary 2-second tooltip confirmation popup for successful copies.
 - [x] Validate and fix browser hotkey mapping conflicts between grid closure commands and tab switching shortcuts (`Ctrl+0-9`).
 - [x] Forward `Ctrl+1-9` keys dynamically to standard browser tab selection if target grid slot is unoccupied.
 - [x] Consolidate split script files into a single unified workspace to fix compile inclusion path bugs.

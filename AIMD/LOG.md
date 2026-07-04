@@ -29,16 +29,34 @@ title: LOG
 ## 💾 Commit Message
 [[#^toc-commit|TOC]]
 ```text
-fix: validate and complete keyboard accelerator keymapping fixup
+feat: externalize browser data to INI file and add 'Copy Cheat Sheet' to Help Guide
 
-- Validated all requested browser keybindings (such as ctrl+t, ctrl+shift+t, ctrl+0-9, up/down/left/right, and others).
-- Resolved registration conflict for `Ctrl+0-9` by skipping duplicate standard forwarding in section 3 of `db-keys.au3`.
-- Implemented an elegant dynamic fallback inside section 2's hotkeys: if no browser occupies the target grid position, the `Ctrl+0-9` key is forwarded via `Send` to the active browser tab.
-- Updated markdown logs, tasks list, and version milestones.
+- Replaced hardcoded browser properties in `db-consts.au3` with a self-generating dynamic INI file loader.
+- Added a high-contrast orange "Copy Cheat Sheet" button next to "Close Help Guide" on the Help dialog.
+- Created `_HelpGUI_CopyCheatSheet` event handler to copy a beautifully condensed plaintext representation of all hotkey mapping categories directly to the clipboard.
+- Added dynamic tooltip confirmations and status updates on successful copy actions.
 ```
 
 ## 📝 Log Entries
 [[#^toc-entries|TOC]]
+
+### 📅 [2026-07-04T07:29:00-07:00]
+#### 🎯 Primary Goals & Requirements
+- Externalize all browser configurations to an INI file (`desk-browsers.ini`).
+- Add a "Copy Cheat Sheet" button to the Help dialog that copies a very condensed plaintext representation of the shortcut keys to the user's clipboard.
+
+#### 🛠️ Completed Changes in this Session
+- **Browser INI File Engine**: Replaced hardcoded array assignments in `db-consts.au3` with a self-bootstrapping dynamic configuration loader. If `desk-browsers.ini` does not exist in `@ScriptDir`, it automatically populates standard paths (e.g. Chrome, Brave, Edge, Vivaldi, Firefox, Opera, and Browser Picker) resolving dynamic local folders before writing. It then reads them dynamically, enabling instantaneous end-user path customizability.
+- **Help Guide UI Upgrades**: Redesigned the bottom controls of `$hHelpGUI` in `db-lib.au3` to feature a symmetrical layout with two native dark-slate buttons: "Copy Cheat Sheet" (X=90, orange text) and "Close Help Guide" (X=310, white text).
+- **Clipboard Cheat Sheet Formatter**: Authored `_HelpGUI_CopyCheatSheet()` to format a highly organized, dense plaintext cheat sheet grouped by Category (Global, Browser Focus, Indicated Window, Arrange & Stack, Grid Controls).
+- **Interactive Tooltip Prompts**: Connected standard `ClipPut` and added transient 2-second ToolTip toast notifications upon successful copy operations using `AdlibRegister`.
+
+#### 🔸 Affected Files
+- `/db-consts.au3`
+- `/db-lib.au3`
+- `/AIMD/LOG.md`
+- `/AIMD/TASKS.md`
+- `/AIMD/VERSIONS.md`
 
 ### 📅 [2026-07-04T07:12:00-07:00]
 #### 🎯 Primary Goals & Requirements

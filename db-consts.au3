@@ -1,50 +1,81 @@
 #include-once
 #include "db-globals.au3"
 ; file: C:\_o\__\os-desk-browsers\db-consts.au3
-; Populating our pre-sized table properties
-$aBrowsers[0][0] = "Brave"
-$aBrowsers[0][1] = "Brave"
-$aBrowsers[0][2] = "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
-$aBrowsers[0][3] = "brave.exe"
-$aBrowsers[0][4] = "B"
 
-$aBrowsers[1][0] = "Google Chrome"
-$aBrowsers[1][1] = "Google Chrome"
-$aBrowsers[1][2] = "C:\Program Files\Google\Chrome\Application\chrome.exe"
-$aBrowsers[1][3] = "chrome.exe"
-$aBrowsers[1][4] = "C"
+Local $sIniPath = @ScriptDir & "\desk-browsers.ini"
 
-$aBrowsers[2][0] = "Edge"
-$aBrowsers[2][1] = "Edge"
-$aBrowsers[2][2] = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
-$aBrowsers[2][3] = "msedge.exe"
-$aBrowsers[2][4] = "E"
+; Check if the INI file exists. If not, write defaults.
+If Not FileExists($sIniPath) Then
+    Local $sBraveDefault = "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
+    Local $sChromeDefault = "C:\Program Files\Google\Chrome\Application\chrome.exe"
+    Local $sEdgeDefault = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+    Local $sVivaldiDefault = "C:\Program Files\Vivaldi\Application\vivaldi.exe"
+    Local $sFirefoxDefault = "C:\Program Files\Mozilla Firefox\firefox.exe"
+    
+    Local $sOperaDefault = @LocalAppDataDir & "\Programs\Opera\launcher.exe"
+    If Not FileExists($sOperaDefault) Then $sOperaDefault = @ProgramFilesDir & "\Opera\launcher.exe"
+    
+    Local $sPickerDefault = "C:\Program Files\BrowserPicker\BrowserPicker.exe"
 
-$aBrowsers[3][0] = "Vivaldi"
-$aBrowsers[3][1] = "Vivaldi"
-$aBrowsers[3][2] = "C:\Program Files\Vivaldi\Application\vivaldi.exe"
-$aBrowsers[3][3] = "vivaldi.exe"
-$aBrowsers[3][4] = "V"
+    ; Write Browser 0 (Brave)
+    IniWrite($sIniPath, "Browser_0", "Name", "Brave")
+    IniWrite($sIniPath, "Browser_0", "Match", "Brave")
+    IniWrite($sIniPath, "Browser_0", "Path", $sBraveDefault)
+    IniWrite($sIniPath, "Browser_0", "Exe", "brave.exe")
+    IniWrite($sIniPath, "Browser_0", "Hotkey", "B")
 
-$aBrowsers[4][0] = "Mozilla Firefox"
-$aBrowsers[4][1] = "Mozilla Firefox"
-$aBrowsers[4][2] = "C:\Program Files\Mozilla Firefox\firefox.exe"
-$aBrowsers[4][3] = "firefox.exe"
-$aBrowsers[4][4] = "F"
+    ; Write Browser 1 (Chrome)
+    IniWrite($sIniPath, "Browser_1", "Name", "Google Chrome")
+    IniWrite($sIniPath, "Browser_1", "Match", "Google Chrome")
+    IniWrite($sIniPath, "Browser_1", "Path", $sChromeDefault)
+    IniWrite($sIniPath, "Browser_1", "Exe", "chrome.exe")
+    IniWrite($sIniPath, "Browser_1", "Hotkey", "C")
 
-Local $sOperaPath = @LocalAppDataDir & "\Programs\Opera\launcher.exe"
-If Not FileExists($sOperaPath) Then $sOperaPath = @ProgramFilesDir & "\Opera\launcher.exe"
-$aBrowsers[5][0] = "Opera"
-$aBrowsers[5][1] = "Opera"
-$aBrowsers[5][2] = $sOperaPath
-$aBrowsers[5][3] = "opera.exe"
-$aBrowsers[5][4] = "O"
+    ; Write Browser 2 (Edge)
+    IniWrite($sIniPath, "Browser_2", "Name", "Edge")
+    IniWrite($sIniPath, "Browser_2", "Match", "Edge")
+    IniWrite($sIniPath, "Browser_2", "Path", $sEdgeDefault)
+    IniWrite($sIniPath, "Browser_2", "Exe", "msedge.exe")
+    IniWrite($sIniPath, "Browser_2", "Hotkey", "E")
 
-$aBrowsers[6][0] = "Browser Picker"
-$aBrowsers[6][1] = "BrowserPicker"
-$aBrowsers[6][2] = "C:\Program Files\BrowserPicker\BrowserPicker.exe"
-$aBrowsers[6][3] = "BrowserPicker.exe"
-$aBrowsers[6][4] = "P"
+    ; Write Browser 3 (Vivaldi)
+    IniWrite($sIniPath, "Browser_3", "Name", "Vivaldi")
+    IniWrite($sIniPath, "Browser_3", "Match", "Vivaldi")
+    IniWrite($sIniPath, "Browser_3", "Path", $sVivaldiDefault)
+    IniWrite($sIniPath, "Browser_3", "Exe", "vivaldi.exe")
+    IniWrite($sIniPath, "Browser_3", "Hotkey", "V")
+
+    ; Write Browser 4 (Firefox)
+    IniWrite($sIniPath, "Browser_4", "Name", "Mozilla Firefox")
+    IniWrite($sIniPath, "Browser_4", "Match", "Mozilla Firefox")
+    IniWrite($sIniPath, "Browser_4", "Path", $sFirefoxDefault)
+    IniWrite($sIniPath, "Browser_4", "Exe", "firefox.exe")
+    IniWrite($sIniPath, "Browser_4", "Hotkey", "F")
+
+    ; Write Browser 5 (Opera)
+    IniWrite($sIniPath, "Browser_5", "Name", "Opera")
+    IniWrite($sIniPath, "Browser_5", "Match", "Opera")
+    IniWrite($sIniPath, "Browser_5", "Path", $sOperaDefault)
+    IniWrite($sIniPath, "Browser_5", "Exe", "opera.exe")
+    IniWrite($sIniPath, "Browser_5", "Hotkey", "O")
+
+    ; Write Browser 6 (Picker)
+    IniWrite($sIniPath, "Browser_6", "Name", "Browser Picker")
+    IniWrite($sIniPath, "Browser_6", "Match", "BrowserPicker")
+    IniWrite($sIniPath, "Browser_6", "Path", $sPickerDefault)
+    IniWrite($sIniPath, "Browser_6", "Exe", "BrowserPicker.exe")
+    IniWrite($sIniPath, "Browser_6", "Hotkey", "P")
+EndIf
+
+; Populate browsers from INI
+For $i = 0 To 6
+    Local $sSec = "Browser_" & $i
+    $aBrowsers[$i][0] = IniRead($sIniPath, $sSec, "Name", "")
+    $aBrowsers[$i][1] = IniRead($sIniPath, $sSec, "Match", "")
+    $aBrowsers[$i][2] = IniRead($sIniPath, $sSec, "Path", "")
+    $aBrowsers[$i][3] = IniRead($sIniPath, $sSec, "Exe", "")
+    $aBrowsers[$i][4] = IniRead($sIniPath, $sSec, "Hotkey", "")
+Next
 
 $iBrowserCount = UBound($aBrowsers, 1)
 

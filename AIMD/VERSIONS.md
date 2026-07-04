@@ -28,6 +28,12 @@ title: VERSIONS
 ## 🚀 Stable Releases & Milestones
 [[#^toc-stable|TOC]]
 
+### 🏷️ v1.4.0 (2026-07-04) - External INI Configuration & Copyable Clipboard Cheat Sheet
+- **Added / Enhanced:**
+  - **Dynamic INI Configuration (`desk-browsers.ini`)**: Externalized all browser names, regex matching titles, executable launch paths, process names, and hotkey letters out of code. If missing, it self-bootstraps with resolved absolute paths, enabling robust end-user customization.
+  - **Copy Cheat Sheet Button**: Integrated a brand-orange native button on the Help dialog to copy a condensed plaintext summary of all mapped hotkeys instantly.
+  - **Transient ToolTip Status**: Implemented a temporary 2-second ToolTip message overlay upon copying, providing smooth interactive confirmation.
+
 ### 🏷️ v1.3.0 (2026-07-04) - Hotkey Conflict Resolution & Fallback Tab Forwarding
 - **Added / Enhanced:**
   - **Conflict-Free Accelerator Handling**: Skipped standard `Ctrl+0-9` duplicate accelerator entries in the browser key section of `db-keys.au3` to resolve system mapping collisions.

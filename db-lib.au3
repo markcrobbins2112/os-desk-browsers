@@ -266,8 +266,13 @@ Func _ShowHelp()
     $oIE.document.write($sHTML)
     $oIE.document.body.style.border = "none"
     
-    ; Native styled close button at the bottom
-    Local $idCloseBtn = GUICtrlCreateButton("Close Help Guide", 205, 850, 200, 32)
+    ; Symmetrical button layout at the bottom
+    Local $idCopyBtn = GUICtrlCreateButton("Copy Cheat Sheet", 90, 850, 200, 32)
+    GUICtrlSetBkColor($idCopyBtn, 0x1E1E1E)
+    GUICtrlSetColor($idCopyBtn, 0xFF6600) ; High contrast brand orange text
+    GUICtrlSetFont($idCopyBtn, 10, 600, 0, "Segoe UI")
+    
+    Local $idCloseBtn = GUICtrlCreateButton("Close Help Guide", 310, 850, 200, 32)
     GUICtrlSetBkColor($idCloseBtn, 0x1E1E1E) ; Dark slate button background
     GUICtrlSetColor($idCloseBtn, 0xFFFFFF)
     GUICtrlSetFont($idCloseBtn, 10, 600, 0, "Segoe UI")
@@ -275,6 +280,7 @@ Func _ShowHelp()
     ; Setup events for Help GUI
     GUISetOnEvent(-3, "_HelpGUI_Close", $hHelpGUI) ; -3 is $GUI_EVENT_CLOSE
     GUICtrlSetOnEvent($idCloseBtn, "_HelpGUI_Close")
+    GUICtrlSetOnEvent($idCopyBtn, "_HelpGUI_CopyCheatSheet")
     
     Local $aHelpAccel[1][2] = [["{ESC}", $idCloseBtn]]
     GUISetAccelerators($aHelpAccel, $hHelpGUI)
@@ -285,6 +291,57 @@ EndFunc
 Func _HelpGUI_Close()
     GUIDelete($hHelpGUI)
     $hHelpGUI = 0
+EndFunc
+
+Func _HelpGUI_CopyCheatSheet()
+    Local $sCheatSheet = _
+        "=== OS DESK BROWSERS SHORTCUT CHEAT SHEET ===" & @CRLF & _
+        "" & @CRLF & _
+        "[GLOBAL]" & @CRLF & _
+        "Win+AppsKey       - Toggle Manager GUI visibility" & @CRLF & _
+        "Esc               - Minimize Manager to Tray / Close Help" & @CRLF & _
+        "" & @CRLF & _
+        "[BROWSER FOCUS / LAUNCH]" & @CRLF & _
+        "B/C/E/V/F/O/P     - Activate or Launch browser (Opera is O)" & @CRLF & _
+        "Ctrl+Letter       - Close nearest browser window of type" & @CRLF & _
+        "Alt+Letter        - Indicate/focus browser window of type" & @CRLF & _
+        "Shift+Letter      - New tab in browser type with current URL" & @CRLF & _
+        "Enter             - Activate or launch indicated browser" & @CRLF & _
+        "" & @CRLF & _
+        "[INDICATED WINDOW ACTIONS]" & @CRLF & _
+        "Ctrl+C / Insert   - Copy URL of indicated window" & @CRLF & _
+        "Ctrl+V / Sh+Ins   - New tab in indicated with clipboard" & @CRLF & _
+        "Ctrl+X / Sh+Del   - Copy URL of indicated and close tab" & @CRLF & _
+        "Alt+Up / Alt+Down - Restore / Minimize indicated window" & @CRLF & _
+        "[ / ]             - Indicate previous / next browser in list (wraps)" & @CRLF & _
+        "Up/Down/Left/Right- Select browser relative to current" & @CRLF & _
+        "Ctrl+Arrows       - Indicate browser window in direction" & @CRLF & _
+        "" & @CRLF & _
+        "[WINDOW ARRANGE, TABS, & Z-STACK]" & @CRLF & _
+        "\                 - Cascade all windows of indicated type" & @CRLF & _
+        "Ctrl+\            - Split all tabs to new windows" & @CRLF & _
+        "Shift+\           - Gather all windows of type tabs to one window" & @CRLF & _
+        "Alt+PageUp        - Send indicated to back, indicate top of type" & @CRLF & _
+        "Alt+PageDown      - Indicate and bring deepest of type to top" & @CRLF & _
+        "Shift+PageUp/Down - Indicate previous / next sibling of type" & @CRLF & _
+        "" & @CRLF & _
+        "[GRID CONTROLS]" & @CRLF & _
+        "0-9               - Select browser on grid (0 is Center)" & @CRLF & _
+        "Shift+0-9         - Place selected browser on grid position" & @CRLF & _
+        "Ctrl+0-9          - Close browser window on grid position (Fallback: standard browser tab select)" & @CRLF & _
+        "Alt+0-9           - Indicate window on grid position" & @CRLF & _
+        "Ctrl+Shift+0-9    - Open new tab at grid position with current URL" & @CRLF & _
+        "Alt+Home / End    - Indicate first / last window on grid"
+    
+    ClipPut($sCheatSheet)
+    GUICtrlSetData($idStatus, "Copied condensed cheat sheet to clipboard!")
+    ToolTip("Cheat sheet copied to clipboard!", Default, Default, "Copied", 1, 1)
+    AdlibRegister("_ClearHelpTooltip", 2000)
+EndFunc
+
+Func _ClearHelpTooltip()
+    ToolTip("")
+    AdlibUnRegister("_ClearHelpTooltip")
 EndFunc
 
 Func _CycleGridWindows($bNext)
