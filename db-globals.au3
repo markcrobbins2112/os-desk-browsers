@@ -80,4 +80,10 @@ Global $idStatus
 Global $tray_Restore
 Global $tray_Exit
 
+Global $bIsNavigatingSpatial = False ; Core lock preventing background routines from stripping borders
+Global $hLastSelectedWin = 0 ; Holds the window currently highlighted
+Global $hLastPrevWin = 0     ; Holds the original Z-order neighbor behind it
+Global $idTargetPreview = 0
+Global $hDwmThumbnail = 0
+
 ; file: C:\_o\__\os-desk-browsers\db-globals.au3

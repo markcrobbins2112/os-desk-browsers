@@ -373,11 +373,21 @@ Func _MoveWindowToGridPosition($hWnd, $iPos, $iOffset = 0)
 EndFunc
 
 Func _ToggleGUI()
-    If $bGUI_Visible Then
-        _MinimizeToTray()
-    Else
+    ; If the GUI is hidden, immediately show it and bring it to the front
+    If Not $bGUI_Visible Then
         _ShowGUI()
+        Return
     EndIf
+
+    ; NEW LOGIC: If the GUI is visible but DOES NOT have focus, activate it instead of closing it!
+    If Not WinActive($hGUI) Then
+        WinActivate($hGUI)
+        ControlFocus($hGUI, "", $idListview) ; Direct focus right back to your browser list
+        Return
+    EndIf
+
+    ; If the GUI is visible AND already has active focus, then minimize it to the tray
+    _MinimizeToTray()
 EndFunc
 
 Func _MinimizeToTray()
@@ -398,13 +408,35 @@ Func _HandleClose()
 EndFunc
 
 Func _ExitApp()
-    MsgBox(0,"Exit","Exit")
+    ;MsgBox(0,"Exit","Exit")
     If $hLastSelectedWin <> 0 And _WinAPI_IsWindow($hLastSelectedWin) Then
         _WinAPI_SetWindowPos($hLastSelectedWin, $hLastPrevWin, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE))
     EndIf
     _ClearOrangeBorder()
+    _PlayGoodbyeBeeps()
     Exit
 EndFunc
+
+Func _PlayHappyBeeps()
+    Beep(523, 80)  ; Musical Note: C5 (Short start)
+    Sleep(30)
+    Beep(659, 80)  ; Musical Note: E5 (Ascending)
+    Sleep(30)
+    Beep(784, 80)  ; Musical Note: G5 (Building up)
+    Sleep(30)
+    Beep(1047, 150) ; Musical Note: C6 (Bright finish!)
+EndFunc
+; Plays a descending, clean goodbye sequence
+Func _PlayGoodbyeBeeps()
+    Beep(988, 90)   ; Musical Note: B5 (High starting pitch)
+    Sleep(20)
+    Beep(784, 90)   ; Musical Note: G5 (Stepping down)
+    Sleep(20)
+    Beep(587, 90)   ; Musical Note: D5 (Falling lower)
+    Sleep(40)       ; Slightly longer dramatic pause
+    Beep(392, 180)  ; Musical Note: G4 (Deep, satisfying resolution)
+EndFunc
+
 
 Func _IndicateDirection($sDir)
     Local $hWnd = $hLastSelectedWin

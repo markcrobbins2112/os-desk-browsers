@@ -10,3 +10,4 @@
 #include <WinAPI.au3>
 #include <WinAPIGdi.au3>
 #include <TrayConstants.au3>
+

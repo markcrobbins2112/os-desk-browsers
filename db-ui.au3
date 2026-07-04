@@ -30,6 +30,7 @@ EndFunc
 $hGUI = GUICreate("Browser Manager", 700, 320, -1, -1, BitOR($WS_OVERLAPPEDWINDOW, $WS_CLIPSIBLINGS), $WS_EX_TOPMOST)
 GUISetBkColor(0x2D2D2D, $hGUI) ; Sleek medium grey background
 
+
 GUISetOnEvent($GUI_EVENT_CLOSE, "_HandleClose", $hGUI)
 
 Local $idTitleLabel = GUICtrlCreateLabel("Keys: Letter (Act) | Ctrl+Letter (Close) | Alt+Letter (Focus) | Esc (Min) | - (Min Toggle) | Backspace (To Back)", 10, 12, 580, 20)
@@ -125,13 +126,18 @@ GUICtrlSetOnEvent($idDummyInsert, "_OnInsertPressed")
 $idDummyDelete = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyDelete, "_OnDeletePressed")
 $idDummyUp = GUICtrlCreateDummy()
-GUICtrlSetOnEvent($idDummyUp, "_OnIndicatePrevInList")
 $idDummyDown = GUICtrlCreateDummy()
-GUICtrlSetOnEvent($idDummyDown, "_OnIndicateNextInList")
 $idDummyLeft = GUICtrlCreateDummy()
-GUICtrlSetOnEvent($idDummyLeft, "_OnIndicatePrevInList")
 $idDummyRight = GUICtrlCreateDummy()
-GUICtrlSetOnEvent($idDummyRight, "_OnIndicateNextInList")
+GUICtrlSetOnEvent($idDummyLeft, "_OnNavigateSpatialLeft")
+GUICtrlSetOnEvent($idDummyRight, "_OnNavigateSpatialRight")
+GUICtrlSetOnEvent($idDummyUp, "_OnNavigateSpatialUp")
+GUICtrlSetOnEvent($idDummyDown, "_OnNavigateSpatialDown")
+
+; GUICtrlSetOnEvent($idDummyUp, "_OnIndicatePrevInList")
+; GUICtrlSetOnEvent($idDummyDown, "_OnIndicateNextInList")
+; GUICtrlSetOnEvent($idDummyLeft, "_OnIndicatePrevInList")
+; GUICtrlSetOnEvent($idDummyRight, "_OnIndicateNextInList")
 $idDummyCopyUrl = GUICtrlCreateDummy()
 GUICtrlSetOnEvent($idDummyCopyUrl, "_OnCopyUrl")
 $idDummySendToBack = GUICtrlCreateDummy()

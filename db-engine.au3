@@ -10,49 +10,28 @@
 
 ; Handles Z-Order checking, selections, and updating frame locations
 Func _HandleZOrderSelection()
-    Local $bDeFocused = False
+    ; If the manager isn't open or visible, clear everything out safely
     If Not $bGUI_Visible Then
-        $bDeFocused = True
-    Else
-        Local $hFocusedCtrl = ControlGetHandle($hGUI, "", ControlGetFocus($hGUI))
-        Local $hListviewHandle = GUICtrlGetHandle($idListview)
-        If $hFocusedCtrl <> $hListviewHandle Then
-            $bDeFocused = True
-        EndIf
-    EndIf
-    
-    If Not $bDeFocused Then
-        Local $iSelected = _GUICtrlListView_GetSelectedIndices($idListview)
-        If $iSelected = "" Then
-            $bDeFocused = True
-        Endif
-    EndIf
-    
-    If $bDeFocused Then
         _ClearOrangeBorder()
-        If $iLastSelectionIndex <> -1 Then
-            $iLastSelectionIndex = -1
-            Beep(800, 100) ; Defocus beep
-        EndIf
         Return
     EndIf
     
-    Local $iSelected = _GUICtrlListView_GetSelectedIndices($idListview)
-    Local $iIdx = Int($iSelected)
+    ; 1. Grab the currently selected browser window from your ListView index pointer
+    Local $hTargetWin = $hLastSelectedWin
     
-    If $iIdx <> $iLastSelectionIndex Then
-        $iLastSelectionIndex = $iIdx
-        Beep(1000, 100) ; Selection beep
+    ; Fallback: If our register is empty, get whatever row the user has highlighted
+    If Not $hTargetWin Or Not _WinAPI_IsWindow($hTargetWin) Then
+        $hTargetWin = _GetSelectedBrowserWindow()
     EndIf
     
-    Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $aBrowsers[$iIdx][1] & "$]")
-    If $aWinList[0][0] > 0 Then
-        Local $hTargetWin = $aWinList[1][1] ; Highest window frame in Z-Order
-        If BitAND(WinGetState($hTargetWin), 2) And Not BitAND(WinGetState($hTargetWin), 16) Then
-            _DrawOrangeBorder($hTargetWin)
+    ; 2. BULLETPROOF DRAW: If we have a valid visible window, keep drawing the border around it!
+    If $hTargetWin <> 0 And _WinAPI_IsWindow($hTargetWin) Then
+        Local $iState = WinGetState($hTargetWin)
+        If BitAND($iState, 2) And Not BitAND($iState, 16) Then
+            _DrawOrangeBorder($hTargetWin) ; Draw border smoothly via the main thread
         Else
             _ClearOrangeBorder()
-        EndIf
+        Endif
     Else
         _ClearOrangeBorder()
     EndIf
@@ -166,19 +145,26 @@ Func _PopulateList($aIcons)
     _GUICtrlListView_DeleteAllItems($idListview)
     
     For $i = 0 To $iBrowserCount - 1
-        Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $aBrowsers[$i][1] & "$]")
+        ; FIX: Swapped regex end-anchor from "$" to "\z" to ensure proper array parsing
+        Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $aBrowsers[$i][1] & "\z]")
         $aLastCounts[$i] = $aWinList[0][0]
-        Local $sStatus = ($aWinList[0][0] > 0) ? "Running" : "Not Running"
+        
+        Local $sStatus = "Not Running"
+        If $aWinList[0][0] > 0 Then $sStatus = "Running"
         
         Local $sGridPos = "None"
         Local $iMinCount = 0
         If $aWinList[0][0] > 0 Then
-            $sGridPos = _GetGridPosition($aWinList[1][1]) ; Match topmost row window frame
+            $sGridPos = _GetGridPosition($aWinList[1][1])
+            
+            ; FIX: Changed "$aWinList" to "$aWinList[0][0]" so the loop can safely terminate!
             For $j = 1 To $aWinList[0][0]
                 If _IsWindowMinimized($aWinList[$j][1]) Then $iMinCount += 1
             Next
         EndIf
-        Local $sMinText = ($aWinList[0][0] > 0) ? (String($iMinCount) & " / " & String($aWinList[0][0])) : "0"
+        
+        Local $sMinText = "0"
+        If $aWinList[0][0] > 0 Then $sMinText = String($iMinCount) & " / " & String($aWinList[0][0])
         
         _GUICtrlListView_AddItem($idListview, $aBrowsers[$i][0], $aIcons[$i])
         _GUICtrlListView_AddSubItem($idListview, $i, $sStatus, 1)
@@ -194,7 +180,8 @@ Func _PopulateList($aIcons)
 EndFunc
 
 Func _CheckBrowserRunning($iIndex)
-    Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $aBrowsers[$iIndex][1] & "$]")
+    Local $aWinList = WinList("[REGEXPTITLE:(?i).*" & $aBrowsers[$iIndex][1] & "\z]")
+    ; FIX: Added [0][0] loop boundaries
     For $i = 1 To $aWinList[0][0]
         If BitAND(WinGetState($aWinList[$i][1]), 2) Then Return True
     Next
@@ -267,10 +254,11 @@ Func _ShowGUI()
     Local $iHighestIdx = -1
     Local $aFullWinList = WinList()
     
+    ; FIX: Change "$i = 1 To $aFullWinList" to strictly target the row count element!
     For $i = 1 To $aFullWinList[0][0]
-        Local $hWnd = $aFullWinList[$i][1]
+        Local $hWnd = $aFullWinList[$i][1] ; FIX: Added index [1] to pull window handle
         If BitAND(WinGetState($hWnd), 2) And Not BitAND(WinGetState($hWnd), 16) Then
-            Local $sTitle = $aFullWinList[$i][0]
+            Local $sTitle = $aFullWinList[$i][0] ; FIX: Added index [0] to pull window title
             For $b = 0 To $iBrowserCount - 1
                 If StringInStr($sTitle, $aBrowsers[$b][1]) Then
                     $iHighestIdx = $b

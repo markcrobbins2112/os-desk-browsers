@@ -255,5 +255,7 @@ TrayItemSetOnEvent($tray_Exit, "_ExitApp")
 
 HotKeySet("#" & "{APPSKEY}", "_ToggleGUI")
 ; GUISetOnEvent($GUI_EVENT_CLOSE, "_HandleClose")
+; Press Ctrl + Shift + Esc at any time to instantly kill the script process!
+; HotKeySet("^+{ESC}", "_ExitApp") 
 
 ; file: C:\_o\__\os-desk-browsers\db-keys.au3

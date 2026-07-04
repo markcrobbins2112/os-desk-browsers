@@ -790,6 +790,21 @@ Func _OnDeepestToTopType()
     EndIf
 EndFunc
 
+
+; ==============================================================================
+; CORE UTILITY HELPER (Keep this directly underneath your sibling function)
+; ==============================================================================
+Func _FindProcessNameFromPID($iPID)
+    If $iPID <= 0 Then Return ""
+    Local $aProcessList = ProcessList()
+    For $i = 1 To $aProcessList[0][0]
+        If $aProcessList[$i][1] = $iPID Then 
+            Return $aProcessList[$i][0] ; Returns exact string layout like "chrome.exe"
+        Endif
+    Next
+    Return ""
+EndFunc
+
 Func _OnPrevSiblingOfType()
     Local $hWnd = $hLastSelectedWin
     If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Then $hWnd = _GetSelectedBrowserWindow()
@@ -819,9 +834,11 @@ Func _OnPrevSiblingOfType()
         EndIf
     Next
     
+    ; MATH SHIFT: Move backwards in the array instead of forwards
     If $iCount > 1 And $iCurrentIdx <> -1 Then
-        Local $iTarget = $iCurrentIdx - 1
-        If $iTarget < 0 Then $iTarget = $iCount - 1
+        Local $iTarget = $iCurrentIdx - 1 ; Step backwards
+        If $iTarget < 0 Then $iTarget = $iCount - 1 ; Wrap around to the last index if we go past 0
+        
         Local $hTargetWin = $aVisibleWins[$iTarget]
         _IndicateBrowserWindow($hTargetWin, "Indicated previous sibling window of " & $aBrowsers[$iMatchIdx][0])
     EndIf
@@ -956,5 +973,226 @@ Func _OnIndicateGridHotkey()
         GUICtrlSetData($idStatus, "No window at grid position " & $iTargetPos)
     EndIf
 EndFunc
+
+
+
+; ==============================================================================
+; DIRECTIONAL WRAPPER SHORTCUT INTERCEPTS
+; ==============================================================================
+Func _OnNavigateSpatialLeft()
+    _ExecuteSpatialNavigation("LEFT")
+EndFunc
+
+Func _OnNavigateSpatialRight()
+    _ExecuteSpatialNavigation("RIGHT")
+EndFunc
+
+Func _OnNavigateSpatialUp()
+    _ExecuteSpatialNavigation("UP")
+EndFunc
+
+Func _OnNavigateSpatialDown()
+    _ExecuteSpatialNavigation("DOWN")
+EndFunc
+
+; ==============================================================================
+; CORE SPATIAL VECTOR WINDOW NAVIGATION ENGINE
+; ==============================================================================
+Func _ExecuteSpatialNavigation($sDirection)
+    Beep(850, 60)
+    
+    Local $hWnd = $hLastSelectedWin
+    ; Smart Focus Fallback: Target the selected row window if currently focused on the manager
+    If Not $hWnd Or Not _WinAPI_IsWindow($hWnd) Or $hWnd = $hGUI Then 
+        $hWnd = _GetSelectedBrowserWindow()
+    EndIf
+    If Not $hWnd Then Return
+    
+    ; 1. Gather Source Window Coordinates & Parent Metrics
+    Local $aSourcePos = WinGetPos($hWnd)
+    If Not IsArray($aSourcePos) Then Return
+    Local $iSrcX = $aSourcePos[0]
+    Local $iSrcY = $aSourcePos[1]
+    Local $iSrcW = $aSourcePos[2]
+    Local $iSrcH = $aSourcePos[3]
+    Local $iSrcCX = Int($iSrcX + ($iSrcW / 2))
+    Local $iSrcCY = Int($iSrcY + ($iSrcH / 2))
+    
+    ; Isolate Process ID to prevent child-window collision errors
+    Local $iSourcePID = WinGetProcess($hWnd)
+    Local $sSrcGridRegion = _GetGridPosition($hWnd)
+    
+    ; 2. Enumerate Master Desktop Hierarchy
+    Local $aMasterList = WinList()
+    
+    ; Navigation Tracking Registries
+    Local $hBestFreeWin = 0
+    Local $iBestFreeDist = 999999
+    Local $iBestFreeZOrder = 9999 ; Prioritizes highest visibility layers
+    
+    Local $hBestGridFallbackWin = 0
+    Local $iBestGridFallbackDist = 999999
+    
+    ; 3. Vector Evaluation Matrix Scan Loop
+    For $i = 1 To $aMasterList[0][0]
+        Local $hW = $aMasterList[$i][1]
+        Local $sWinTitle = StringStripWS($aMasterList[$i][0], 3)
+        
+        ; CRITICAL PROCESS ISOLATION GUARD: Skip self, manager, empty frames, and parent PIDs!
+        If $hW = $hWnd Or $hW = $hGUI Or $sWinTitle = "" Then ContinueLoop
+        Local $iCandPID = WinGetProcess($hW)
+        If $iCandPID = $iSourcePID Then ContinueLoop
+        
+        ; Visibility Filter Constraints
+        Local $iState = WinGetState($hW)
+        If Not BitAND($iState, 2) Or BitAND($iState, 16) Then ContinueLoop
+        
+        ; STYLE FLAG FILTER: Ensure candidate window is a true app with a border title bar (WS_CAPTION = 0x00C00000)
+        Local $iStyle = _WinAPI_GetWindowLong($hW, -16) ; GWL_STYLE = -16
+        If Not BitAND($iStyle, 0x00C00000) Then ContinueLoop
+        
+        ; ==============================================================================
+        ; BROWSER ONLY FILTER: Validate that this application is tracked in your list
+        ; ==============================================================================
+        Local $bIsAConfiguredBrowser = False
+        Local $sCandExe = StringLower(_WinAPI_GetProcessFileName($iCandPID))
+        
+        For $b = 0 To $iBrowserCount - 1
+            ; Check if the window matches the executable name (Col 3) or title suffix string (Col 1)
+            If $sCandExe = StringLower($aBrowsers[$b][3]) Or StringInStr($sWinTitle, $aBrowsers[$b][1]) Then
+                $bIsAConfiguredBrowser = True
+                ExitLoop
+            EndIf
+        Next
+        
+        ; If it's a random application window, completely skip it!
+        If Not $bIsAConfiguredBrowser Then ContinueLoop
+        ; ==============================================================================
+        
+        ; Extract Candidate Position Properties
+        Local $aCandPos = WinGetPos($hW)
+        If Not IsArray($aCandPos) Then ContinueLoop
+        Local $iCandX = $aCandPos[0]
+        Local $iCandY = $aCandPos[1]
+        Local $iCandW = $aCandPos[2]
+        Local $iCandH = $aCandPos[3]
+        Local $iCandCX = Int($iCandX + ($iCandW / 2))
+        Local $iCandCY = Int($iCandY + ($iCandH / 2))
+        
+        Local $bIsInDirection = False
+        
+        ; Bound Filtering Calculations via Direction Segments
+        Switch $sDirection
+            Case "LEFT"
+                If $iCandCX < $iSrcCX And Abs($iCandCY - $iSrcCY) < ($iSrcH * 1.5) Then $bIsInDirection = True
+            Case "RIGHT"
+                If $iCandCX > $iSrcCX And Abs($iCandCY - $iSrcCY) < ($iSrcH * 1.5) Then $bIsInDirection = True
+            Case "UP"
+                If $iCandCY < $iSrcCY And Abs($iCandCX - $iSrcCX) < ($iSrcW * 1.5) Then $bIsInDirection = True
+            Case "DOWN"
+                If $iCandCY > $iSrcCY And Abs($iCandCX - $iSrcCX) < ($iSrcW * 1.5) Then $bIsInDirection = True
+        EndSwitch
+        
+        If Not $bIsInDirection Then ContinueLoop
+        
+        ; Compute Straight-line Distance Vector (Euclidean Geometry Math)
+        Local $iDeltaX = $iCandCX - $iSrcCX
+        Local $iDeltaY = $iCandCY - $iSrcCY
+        Local $iDistance = Int(Sqrt(($iDeltaX * $iDeltaX) + ($iDeltaY * $iDeltaY)))
+        
+        Local $sCandGridRegion = _GetGridPosition($hW)
+        
+        ; TARGET ROUTING SCENARIO A: Target is a free floating frame layout structure
+        If $sCandGridRegion = "None" Or $sCandGridRegion <> $sSrcGridRegion Then
+            ; Favor Z-Order positions first, matching native Top-Down layout from WinList arrays
+            If $i < $iBestFreeZOrder Or ($i = $iBestFreeZOrder And $iDistance < $iBestFreeDist) Then
+                $hBestFreeWin = $hW
+                $iBestFreeDist = $iDistance
+                $iBestFreeZOrder = $i
+            EndIf
+        ; TARGET ROUTING SCENARIO B: Execute fallback grid alignment routines
+        ElseIf $sCandGridRegion <> "None" And $sCandGridRegion = _GetFuzzyGridDirection($sSrcGridRegion, $sDirection) Then
+            If $iDistance < $iBestGridFallbackDist Then
+                $hBestGridFallbackWin = $hW
+                $iBestGridFallbackDist = $iDistance
+            EndIf
+        EndIf
+    Next
+    
+    ; 4. Final Processing Target Resolution Execution
+    Local $hFinalTarget = 0
+    If $hBestFreeWin <> 0 Then
+        $hFinalTarget = $hBestFreeWin
+    ElseIf $hBestGridFallbackWin <> 0 Then
+        $hFinalTarget = $hBestGridFallbackWin
+    EndIf
+    
+    ; Execute hand-off if destination is discovered safely
+    If $hFinalTarget <> 0 And _WinAPI_IsWindow($hFinalTarget) Then
+        ; Update our global tracking registers to point to the new destination window
+        $hLastSelectedWin = $hFinalTarget
+        
+        ; Match the targeted window type back to your Manager UI list rows
+        Local $sTargetTitle = WinGetTitle($hFinalTarget)
+        Local $iNewRowSelection = -1
+        For $b = 0 To $iBrowserCount - 1
+            ; Explicitly target Column Index 1 (Suffix name like "Brave" or "Chrome") to prevent 2D array crash!
+            If StringInStr($sTargetTitle, $aBrowsers[$b][1]) Then
+                $iNewRowSelection = $b
+                ExitLoop
+            EndIf
+        Next
+        
+        ; Force your list rows to instantly highlight your selection
+        If $iNewRowSelection <> -1 Then
+            _GUICtrlListView_SetItemSelected($idListview, $iNewRowSelection, True, True)
+            _GUICtrlListView_EnsureVisible($idListview, $iNewRowSelection)
+            $iLastSelectionIndex = $iNewRowSelection ; Sync selection tracker
+        EndIf
+        
+        ; Pull the targeted browser to the top of the desktop stack, but immediately 
+        ; keep our Manager GUI focused so your accelerator keys remain active!
+        _WinAPI_SetWindowPos($hFinalTarget, 0, 0, 0, 0, 0, BitOR(0x0002, 0x0001, 0x0010)) ; HWND_TOP, SWP_NOMOVE, SWP_NOSIZE, SWP_NOACTIVATE
+        
+        ; Force focus right back onto your list layout control
+        WinActivate($hGUI)
+        ControlFocus($hGUI, "", $idListview)
+        
+        If IsDeclared("idStatus") Then 
+            GUICtrlSetData($idStatus, "Target locked via accelerator hierarchy.")
+        EndIf
+    EndIf
+EndFunc
+
+; ==============================================================================
+; SPATIAL MATRIX KEYPAD TRANSITION INTERFACE HELPER
+; ==============================================================================
+Func _GetFuzzyGridDirection($sCurrentGrid, $sDirection)
+    Local $iGrid = Int($sCurrentGrid)
+    If $iGrid <= 0 Or $iGrid > 9 Then Return "None"
+    
+    Switch $sDirection
+        Case "LEFT"
+            If $iGrid = 1 Then Return "3" ; Wrap left boundary blocks
+            If $iGrid = 4 Then Return "6"
+            If $iGrid = 7 Then Return "9"
+            Return String($iGrid - 1)
+        Case "RIGHT"
+            If $iGrid = 3 Then Return "1" ; Wrap right boundary blocks
+            If $iGrid = 6 Then Return "4"
+            If $iGrid = 9 Then Return "7"
+            Return String($iGrid + 1)
+        Case "UP"
+            Local $iTarget = $iGrid - 3
+            If $iTarget < 1 Then $iTarget += 9 ; Wrap top bounds
+            Return String($iTarget)
+        Case "DOWN"
+            Local $iTarget = $iGrid + 3
+            If $iTarget > 9 Then $iTarget -= 9 ; Wrap bottom bounds
+            Return String($iTarget)
+    EndSwitch
+    Return "None"
+EndFunc
+
 
 ; file: C:\_o\__\os-desk-browsers\db-events.au3

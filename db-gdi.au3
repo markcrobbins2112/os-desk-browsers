@@ -22,63 +22,106 @@
 Func _DrawOrangeBorder($hTarget)
     If Not _WinAPI_IsWindow($hTarget) Then Return
     Local $aPos = WinGetPos($hTarget)
-    If Not IsArray($aPos) Then Return
+    If Not IsArray($aPos) Then Return 
     
-    ; Promote window to the top of Z-index, saving original position if not already tracked
-    If $hLastSelectedWin <> $hTarget Then
-        If $hLastSelectedWin <> 0 And _WinAPI_IsWindow($hLastSelectedWin) Then
-            Local $hInsertAfter = $hLastPrevWin
-            If Not _WinAPI_IsWindow($hInsertAfter) Then $hInsertAfter = 1 ; HWND_BOTTOM if previous sibling is gone
-            _WinAPI_SetWindowPos($hLastSelectedWin, $hInsertAfter, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE))
-        EndIf
-        $hLastSelectedWin = $hTarget
-        $hLastPrevWin = _WinAPI_GetWindow($hTarget, 3) ; GW_HWNDPREV = 3
-        
-        _WinAPI_SetWindowPos($hTarget, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE)) ; HWND_TOP = 0
-        If $bGUI_Visible Then
-            WinActivate($hGUI)
-            _WinAPI_SetWindowPos($hGUI, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE)) ; Keep Manager above it
+    Local Const $GW_HWNDNEXT = 2
+    Local Const $SWP_NOSIZE = 0x0001
+    Local Const $SWP_NOMOVE = 0x0002
+    Local Const $SWP_NOACTIVATE = 0x0010
+    Local Const $RGN_DIFF = 4
+    
+    ; 1. Fetch monitor scaling ratios
+    Local $hDC_Screen = _WinAPI_GetDC(0)
+    Local $iDpiX = _WinAPI_GetDeviceCaps($hDC_Screen, 88) 
+    Local $iDpiY = _WinAPI_GetDeviceCaps($hDC_Screen, 90) 
+    _WinAPI_ReleaseDC(0, $hDC_Screen)
+    Local $fScaleX = $iDpiX / 96
+    Local $fScaleY = $iDpiY / 96
+
+    ; 2. Maintain floating overlay window canvas
+    If $hBorderWin = 0 Or Not _WinAPI_IsWindow($hBorderWin) Then
+        $hBorderWin = GUICreate("", $aPos[2], $aPos[3], $aPos[0], $aPos[1], 0x80000000, BitOR(0x00080000, 0x00000020, 0x00000008)) 
+        GUISetBkColor(0xABCDEF, $hBorderWin) 
+        _WinAPI_SetLayeredWindowAttributes($hBorderWin, 0xABCDEF, 255, 1) 
+        GUISetState(4, $hBorderWin) 
+    Else
+        Local $aCurrentBorderPos = WinGetPos($hBorderWin)
+        If IsArray($aCurrentBorderPos) Then
+            If $aCurrentBorderPos[0] <> $aPos[0] Or $aCurrentBorderPos[1] <> $aPos[1] Or $aCurrentBorderPos[2] <> $aPos[2] Or $aCurrentBorderPos[3] <> $aPos[3] Then
+                Local Const $HWND_TOPMOST = -1
+                _WinAPI_SetWindowPos($hBorderWin, $HWND_TOPMOST, $aPos[0], $aPos[1], $aPos[2], $aPos[3], $SWP_NOACTIVATE)
+            EndIf
         EndIf
     EndIf
-    
-    If $hBorderWin = 0 Then
-        $hBorderWin = GUICreate("", $aPos[2], $aPos[3], $aPos[0], $aPos[1], $WS_POPUP, BitOR($WS_EX_LAYERED, $WS_EX_TRANSPARENT, $WS_EX_TOPMOST))
-        GUISetBkColor(0xABCDEF, $hBorderWin)
-        _WinAPI_SetLayeredWindowAttributes($hBorderWin, 0xABCDEF, 255, 1)
-        GUISetState(@SW_SHOWNOACTIVATE, $hBorderWin)
-    Else
-        _WinAPI_SetWindowPos($hBorderWin, 0, $aPos[0], $aPos[1], $aPos[2], $aPos[3], $SWP_NOACTIVATE)
-    Endif
-    
+
+    ; ==============================================================================
+    ; 3. THE HANDSHAKE SWITCH (EXPLICIT INDEX 3 EXTRACTION)
+    ; ==============================================================================
+    If $hLastSelectedWin <> $hTarget Then
+        ; Clear out old streaming tunnels cleanly
+        If $hDwmThumbnail <> 0 Then
+            DllCall("dwmapi.dll", "long", "DwmUnregisterThumbnail", "ptr", $hDwmThumbnail)
+            $hDwmThumbnail = 0
+            Sleep(30)
+        EndIf
+
+        If BitAND(WinGetState($hTarget), 16) Then 
+            WinSetState($hTarget, "", @SW_RESTORE)
+        EndIf
+
+        $hLastSelectedWin = $hTarget
+        
+        ; Call Windows to start the streaming video feed connection
+        Local $aResult = DllCall("dwmapi.dll", "long", "DwmRegisterThumbnail", "hwnd", $hBorderWin, "hwnd", $hTarget, "ptr*", 0)
+        
+        ; THE FIX: $aResult[0] is the success check. $aResult[3] is the true thumbnail ID.
+        If Not @error And IsArray($aResult) And $aResult[0] = 0 Then
+            $hDwmThumbnail = $aResult[3] ; <-- PROPER INDEX AT POSITION 3
+            
+            Local $tProps = DllStructCreate("dword dwFlags;int rcDestLeft;int rcDestTop;int rcDestRight;int rcDestBottom;int rcSrcLeft;int rcSrcTop;int rcSrcRight;int rcSrcBottom;byte opacity;bool fVisible;bool fSourceClientAreaOnly")
+            DllStructSetData($tProps, "dwFlags", BitOR(0x1, 0x4, 0x8)) 
+            DllStructSetData($tProps, "fVisible", True)
+            DllStructSetData($tProps, "opacity", 255) 
+            
+            Local $iPhysWidth = Int($aPos[2] * $fScaleX)
+            Local $iPhysHeight = Int($aPos[3] * $fScaleY)
+            
+            DllStructSetData($tProps, "rcDestLeft", 0)
+            DllStructSetData($tProps, "rcDestTop", 0)
+            DllStructSetData($tProps, "rcDestRight", $iPhysWidth)
+            DllStructSetData($tProps, "rcDestBottom", $iPhysHeight)
+            
+            DllCall("dwmapi.dll", "long", "DwmUpdateThumbnailProperties", "ptr", $hDwmThumbnail, "ptr", DllStructGetPtr($tProps))
+        EndIf
+    EndIf
+    ; ==============================================================================
+
+    ; 4. Trace the orange perimeter box
     Local $hDC = _WinAPI_GetWindowDC($hBorderWin)
     Local $hRect = _WinAPI_CreateRectRgn(0, 0, $aPos[2], $aPos[3])
     Local $hInnerRect = _WinAPI_CreateRectRgn(2, 2, $aPos[2] - 2, $aPos[3] - 2)
-    _WinAPI_CombineRgn($hRect, $hRect, $hInnerRect, 4)
-    
-    Local $hBrush = _WinAPI_CreateSolidBrush(0xFF6600)
+    _WinAPI_CombineRgn($hRect, $hRect, $hInnerRect, $RGN_DIFF)
+    Local $hBrush = _WinAPI_CreateSolidBrush(0xFF6600) 
     _WinAPI_FillRgn($hDC, $hRect, $hBrush)
-    
     _WinAPI_DeleteObject($hBrush)
-    _WinAPI_DeleteObject($hRect)
     _WinAPI_DeleteObject($hInnerRect)
+    _WinAPI_DeleteObject($hRect)
     _WinAPI_ReleaseDC($hBorderWin, $hDC)
 EndFunc
 
 Func _ClearOrangeBorder()
-    If $hLastSelectedWin <> 0 Then
-        If _WinAPI_IsWindow($hLastSelectedWin) Then
-            Local $hInsertAfter = $hLastPrevWin
-            If Not _WinAPI_IsWindow($hInsertAfter) Then $hInsertAfter = 1 ; HWND_BOTTOM if previous sibling is gone
-            _WinAPI_SetWindowPos($hLastSelectedWin, $hInsertAfter, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE))
-        EndIf
-        $hLastSelectedWin = 0
-        $hLastPrevWin = 0
+    If $hDwmThumbnail <> 0 Then
+        DllCall("dwmapi.dll", "long", "DwmUnregisterThumbnail", "ptr", $hDwmThumbnail)
+        $hDwmThumbnail = 0
     EndIf
+    $hLastSelectedWin = 0
+    $hLastPrevWin = 0
     If $hBorderWin <> 0 Then
         GUIDelete($hBorderWin)
         $hBorderWin = 0
-    Endif
+    EndIf
 EndFunc
+
 
 Func _GetGridPosition($hWnd)
     If Not BitAND(WinGetState($hWnd), 2) Or BitAND(WinGetState($hWnd), 16) Then Return "None"
