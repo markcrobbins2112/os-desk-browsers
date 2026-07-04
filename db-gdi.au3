@@ -22,7 +22,7 @@
 Func _DrawOrangeBorder($hTarget)
     If Not _WinAPI_IsWindow($hTarget) Then Return
     Local $aPos = WinGetPos($hTarget)
-    If Not IsArray($aPos) Then Return 
+    If Not IsArray($aPos) Then Return ; Guard against invalid window parameters
     
     Local Const $GW_HWNDNEXT = 2
     Local Const $SWP_NOSIZE = 0x0001
@@ -30,7 +30,7 @@ Func _DrawOrangeBorder($hTarget)
     Local Const $SWP_NOACTIVATE = 0x0010
     Local Const $RGN_DIFF = 4
     
-    ; 1. Fetch monitor scaling ratios
+    ; 1. Fetch physical display monitor layout multipliers
     Local $hDC_Screen = _WinAPI_GetDC(0)
     Local $iDpiX = _WinAPI_GetDeviceCaps($hDC_Screen, 88) 
     Local $iDpiY = _WinAPI_GetDeviceCaps($hDC_Screen, 90) 
@@ -38,7 +38,7 @@ Func _DrawOrangeBorder($hTarget)
     Local $fScaleX = $iDpiX / 96
     Local $fScaleY = $iDpiY / 96
 
-    ; 2. Maintain floating overlay window canvas
+    ; 2. Maintain floating overlay window canvas exactly at target window coordinates
     If $hBorderWin = 0 Or Not _WinAPI_IsWindow($hBorderWin) Then
         $hBorderWin = GUICreate("", $aPos[2], $aPos[3], $aPos[0], $aPos[1], 0x80000000, BitOR(0x00080000, 0x00000020, 0x00000008)) 
         GUISetBkColor(0xABCDEF, $hBorderWin) 
@@ -55,54 +55,56 @@ Func _DrawOrangeBorder($hTarget)
     EndIf
 
     ; ==============================================================================
-    ; 3. THE HANDSHAKE SWITCH (EXPLICIT INDEX 3 EXTRACTION)
+    ; 3. THE LIVE SWITCH: HARD UNLINK OLD CHANNELS & FORCE NEW LIVE STREAM
     ; ==============================================================================
-    If $hLastSelectedWin <> $hTarget Then
-        ; Clear out old streaming tunnels cleanly
-        If $hDwmThumbnail <> 0 Then
-            DllCall("dwmapi.dll", "long", "DwmUnregisterThumbnail", "ptr", $hDwmThumbnail)
-            $hDwmThumbnail = 0
-            Sleep(30)
-        EndIf
-
-        If BitAND(WinGetState($hTarget), 16) Then 
-            WinSetState($hTarget, "", @SW_RESTORE)
-        EndIf
-
-        $hLastSelectedWin = $hTarget
-        
-        ; Call Windows to start the streaming video feed connection
-        Local $aResult = DllCall("dwmapi.dll", "long", "DwmRegisterThumbnail", "hwnd", $hBorderWin, "hwnd", $hTarget, "ptr*", 0)
-        
-        ; THE FIX: $aResult[0] is the success check. $aResult[3] is the true thumbnail ID.
-        If Not @error And IsArray($aResult) And $aResult[0] = 0 Then
-            $hDwmThumbnail = $aResult[3] ; <-- PROPER INDEX AT POSITION 3
-            
-            Local $tProps = DllStructCreate("dword dwFlags;int rcDestLeft;int rcDestTop;int rcDestRight;int rcDestBottom;int rcSrcLeft;int rcSrcTop;int rcSrcRight;int rcSrcBottom;byte opacity;bool fVisible;bool fSourceClientAreaOnly")
-            DllStructSetData($tProps, "dwFlags", BitOR(0x1, 0x4, 0x8)) 
-            DllStructSetData($tProps, "fVisible", True)
-            DllStructSetData($tProps, "opacity", 255) 
-            
-            Local $iPhysWidth = Int($aPos[2] * $fScaleX)
-            Local $iPhysHeight = Int($aPos[3] * $fScaleY)
-            
-            DllStructSetData($tProps, "rcDestLeft", 0)
-            DllStructSetData($tProps, "rcDestTop", 0)
-            DllStructSetData($tProps, "rcDestRight", $iPhysWidth)
-            DllStructSetData($tProps, "rcDestBottom", $iPhysHeight)
-            
-            DllCall("dwmapi.dll", "long", "DwmUpdateThumbnailProperties", "ptr", $hDwmThumbnail, "ptr", DllStructGetPtr($tProps))
-        EndIf
+    ; WE REMOVED THE CHOKING "If $hLastSelectedWin <> $hTarget Then" LINE ENTIRELY
+    
+    ; Step A: Forcefully kill any lingering window video feeds before making a new one
+    If $hDwmThumbnail <> 0 Then
+        DllCall("dwmapi.dll", "long", "DwmUnregisterThumbnail", "ptr", $hDwmThumbnail)
+        $hDwmThumbnail = 0
     EndIf
+
+    ; Wake up the window if it's sleeping in the taskbar
+    If BitAND(WinGetState($hTarget), 16) Then 
+        WinSetState($hTarget, "", @SW_RESTORE)
+    EndIf
+    
+    ; Step B: Request a brand new hardware streaming pipeline using the active target handle
+    Local $aResult = DllCall("dwmapi.dll", "long", "DwmRegisterThumbnail", "hwnd", $hBorderWin, "hwnd", $hTarget, "ptr*", 0)
+    
+    ; Extract the correct unique thumbnail ID token from array item [3]
+    If Not @error And IsArray($aResult) And $aResult[0] = 0 Then
+        $hDwmThumbnail = $aResult[3] ; <-- PROPERLY ASSIGNS TARGET INDEX PARAMETER 3
+        
+        Local $tProps = DllStructCreate("dword dwFlags;int rcDestLeft;int rcDestTop;int rcDestRight;int rcDestBottom;int rcSrcLeft;int rcSrcTop;int rcSrcRight;int rcSrcBottom;byte opacity;bool fVisible;bool fSourceClientAreaOnly")
+        DllStructSetData($tProps, "dwFlags", BitOR(0x1, 0x4, 0x8)) 
+        DllStructSetData($tProps, "fVisible", True)
+        DllStructSetData($tProps, "opacity", 255) 
+        
+        Local $iPhysWidth = Int($aPos[2] * $fScaleX)
+        Local $iPhysHeight = Int($aPos[3] * $fScaleY)
+        
+        DllStructSetData($tProps, "rcDestLeft", 0)
+        DllStructSetData($tProps, "rcDestTop", 0)
+        DllStructSetData($tProps, "rcDestRight", $iPhysWidth)
+        DllStructSetData($tProps, "rcDestBottom", $iPhysHeight)
+        
+        DllCall("dwmapi.dll", "long", "DwmUpdateThumbnailProperties", "ptr", $hDwmThumbnail, "ptr", DllStructGetPtr($tProps))
+    EndIf
+    
+    $hLastSelectedWin = $hTarget ; Bookmark the selected window safely for reference
     ; ==============================================================================
 
-    ; 4. Trace the orange perimeter box
+    ; 4. Trace overlaying orange highlight border frame
     Local $hDC = _WinAPI_GetWindowDC($hBorderWin)
     Local $hRect = _WinAPI_CreateRectRgn(0, 0, $aPos[2], $aPos[3])
     Local $hInnerRect = _WinAPI_CreateRectRgn(2, 2, $aPos[2] - 2, $aPos[3] - 2)
     _WinAPI_CombineRgn($hRect, $hRect, $hInnerRect, $RGN_DIFF)
+
     Local $hBrush = _WinAPI_CreateSolidBrush(0xFF6600) 
     _WinAPI_FillRgn($hDC, $hRect, $hBrush)
+
     _WinAPI_DeleteObject($hBrush)
     _WinAPI_DeleteObject($hInnerRect)
     _WinAPI_DeleteObject($hRect)
@@ -114,8 +116,10 @@ Func _ClearOrangeBorder()
         DllCall("dwmapi.dll", "long", "DwmUnregisterThumbnail", "ptr", $hDwmThumbnail)
         $hDwmThumbnail = 0
     EndIf
+
     $hLastSelectedWin = 0
     $hLastPrevWin = 0
+    
     If $hBorderWin <> 0 Then
         GUIDelete($hBorderWin)
         $hBorderWin = 0
