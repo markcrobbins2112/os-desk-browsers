@@ -951,7 +951,20 @@ Func _OnCloseGridHotkey()
         GUICtrlSetData($idStatus, "Closed window at grid position " & $iTargetPos)
         _PopulateList($aIconIndices)
     Else
-        GUICtrlSetData($idStatus, "No window at grid position " & $iTargetPos)
+        ; Fallback: Forward the ctrl+number key to the currently selected browser window to switch tabs
+        Local $hWndSel = $hLastSelectedWin
+        If Not $hWndSel Or Not _WinAPI_IsWindow($hWndSel) Then $hWndSel = _GetSelectedBrowserWindow()
+        If $hWndSel Then
+            Local $hActivePrev = WinGetHandle("[ACTIVE]")
+            WinActivate($hWndSel)
+            Sleep(50)
+            Send("^" & String($iTargetPos))
+            Sleep(50)
+            If $hActivePrev Then WinActivate($hActivePrev)
+            GUICtrlSetData($idStatus, "No window at grid " & $iTargetPos & ". Forwarded key to active browser.")
+        Else
+            GUICtrlSetData($idStatus, "No window at grid position " & $iTargetPos)
+        EndIf
     EndIf
 EndFunc
 

@@ -29,14 +29,35 @@ title: LOG
 ## 💾 Commit Message
 [[#^toc-commit|TOC]]
 ```text
-feat: configure Page Up and Page Down to send Ctrl+Page Up and Ctrl+Page Down for tab switching
+fix: validate and complete keyboard accelerator keymapping fixup
 
-- Updated _OnTabLeft and _OnTabRight to send ^{PGUP} and ^{PGDN} under the hood respectively.
-- Refactored the Help guide layout to reflect that Page Up and Page Down switch tabs via Ctrl+Page Up/Down.
+- Validated all requested browser keybindings (such as ctrl+t, ctrl+shift+t, ctrl+0-9, up/down/left/right, and others).
+- Resolved registration conflict for `Ctrl+0-9` by skipping duplicate standard forwarding in section 3 of `db-keys.au3`.
+- Implemented an elegant dynamic fallback inside section 2's hotkeys: if no browser occupies the target grid position, the `Ctrl+0-9` key is forwarded via `Send` to the active browser tab.
+- Updated markdown logs, tasks list, and version milestones.
 ```
 
 ## 📝 Log Entries
 [[#^toc-entries|TOC]]
+
+### 📅 [2026-07-04T07:12:00-07:00]
+#### 🎯 Primary Goals & Requirements
+- Validate the existence of code for all keybindings and functionalities (such as `Ctrl+T`, `Ctrl+Shift+T`, `Ctrl+F4`, `Ctrl+1-9`, navigation keys, grid keys, etc.).
+- Complete keymapping fixup for common browser keys.
+- Prevent conflict between `Ctrl+0-9` mapped for closing grid positions versus switching tabs inside the browsers.
+
+#### 🛠️ Completed Changes in this Session
+- Audited all mapped hotkeys across `db-keys.au3` and `db-events.au3`.
+- Modified section 3 of `db-keys.au3` to skip registering duplicate `Ctrl+0-9` accelerator keys since they are already captured under grid-specific closures.
+- Enhanced the `_OnCloseGridHotkey()` event handler in `db-events.au3` to check if a browser window exists at the specified grid position. If not, it gracefully falls back to activating the selected browser and sending `Ctrl+1-9` keys directly to control tab switching.
+- Verified compilation builds cleanly without syntax issues.
+
+#### 🔸 Affected Files
+- `/db-keys.au3`
+- `/db-events.au3`
+- `/AIMD/LOG.md`
+- `/AIMD/TASKS.md`
+- `/AIMD/VERSIONS.md`
 
 ### 📅 [2026-06-28T02:04:00-07:00]
 #### 🎯 Primary Goals & Requirements

@@ -28,6 +28,13 @@ title: VERSIONS
 ## 🚀 Stable Releases & Milestones
 [[#^toc-stable|TOC]]
 
+### 🏷️ v1.3.0 (2026-07-04) - Hotkey Conflict Resolution & Fallback Tab Forwarding
+- **Added / Enhanced:**
+  - **Conflict-Free Accelerator Handling**: Skipped standard `Ctrl+0-9` duplicate accelerator entries in the browser key section of `db-keys.au3` to resolve system mapping collisions.
+  - **Dynamic Tab Switching Fallback**: Configured the grid closure event (`Ctrl+0-9`) to dynamically detect if a window is active on that position. If no window is present, it acts as a pass-through, forwarding `Ctrl+0-9` directly to the active browser to trigger standard browser tab switching smoothly.
+- **Fixed / Patched:**
+  - **Keyboard Bindings Audit**: Verified that all requested keys, including tab movement, splits, cascading, and clipboard integrations, map flawlessly to their intended operational handlers.
+
 ### 🏷️ v1.2.0 (2026-06-27) - Z-Order Optimization & Technical Documentation Suite
 - **Added / Enhanced:**
   - **Topmost Visible Window Selection**: Modified window selection algorithms to filter out suspended background processes and target standard visible browser windows.

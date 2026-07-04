@@ -37,6 +37,8 @@ title: TASKS
 
 ## 💬 Incoming tasks from chat
 [[#^toc-chat|TOC]]
+- [x] Validate and fix browser hotkey mapping conflicts between grid closure commands and tab switching shortcuts (`Ctrl+0-9`).
+- [x] Forward `Ctrl+1-9` keys dynamically to standard browser tab selection if target grid slot is unoccupied.
 - [x] Consolidate split script files into a single unified workspace to fix compile inclusion path bugs.
 - [x] Update active window selectors to target topmost visible browser matching Highest Z-Index.
 - [x] Review, reverse engineer, and fully document all markdown developer files.

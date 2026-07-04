@@ -83,7 +83,12 @@ Next
 
 ; 3. Map Common Browser Key Forwarding Shortcuts
 For $i = 0 To 31
-    $aAccelKeys[$idx][0] = $aCommonKeys[$i][1]
+    Local $sMapKey = $aCommonKeys[$i][1]
+    ; Skip ^0 to ^9 keys because they are mapped in section 2 under close grid browser hotkeys,
+    ; which dynamically falls back to forwarding ctrl+digit to the browser if the position is empty!
+    If StringRegExp($sMapKey, "^\^[0-9]$") Then ContinueLoop
+    
+    $aAccelKeys[$idx][0] = $sMapKey
     $aAccelKeys[$idx][1] = $aCommonKeys[$i][0]
     $idx += 1
 Next
