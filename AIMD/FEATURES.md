@@ -1,3 +1,7 @@
+---
+title: FEATURES
+---
+
 # FEATURES
 
 ## 📑 AI Primary Files

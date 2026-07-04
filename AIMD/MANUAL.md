@@ -1,3 +1,7 @@
+---
+title: MANUAL
+---
+
 # MANUAL
 
 ## 📑 AI Primary Files

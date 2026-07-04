@@ -1,3 +1,7 @@
+---
+title: LOG
+---
+
 # LOG
 
 ## 📑 AI Primary Files

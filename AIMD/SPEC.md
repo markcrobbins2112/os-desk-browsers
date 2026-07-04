@@ -1,3 +1,7 @@
+---
+title: SPEC
+---
+
 # SPEC
 
 ## 📑 AI Primary Files

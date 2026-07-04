@@ -1,3 +1,7 @@
+---
+title: DESIGN
+---
+
 # DESIGN
 
 ## 📑 AI Primary Files

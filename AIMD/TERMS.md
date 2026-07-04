@@ -1,3 +1,7 @@
+---
+title: TERMS
+---
+
 # TERMS
 
 ## 📑 AI Primary Files

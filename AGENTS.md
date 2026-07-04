@@ -1,3 +1,7 @@
+---
+title: AGENTS
+---
+
 # AGENTS
 
 ## 📑 AI Primary Files

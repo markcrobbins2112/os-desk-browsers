@@ -1,6 +1,11 @@
+---
+title: README
+---
+
 <!-- START OF FILE: README.md - PART 1 -->
 <!-- markdownlint-disable MD013 -->
-# Browser Manager
+
+# README
 
 A desktop helper tool built to arrange, tile, and control multiple browser windows on your screen using fast keyboard shortcuts.
 
