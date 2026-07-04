@@ -22,6 +22,68 @@
 Func _DrawOrangeBorder($hTarget)
     If Not _WinAPI_IsWindow($hTarget) Then Return
     Local $aPos = WinGetPos($hTarget)
+    If Not IsArray($aPos) Then Return
+    
+    ; Promote window to the top of Z-index, saving original position if not already tracked
+    If $hLastSelectedWin <> $hTarget Then
+        If $hLastSelectedWin <> 0 And _WinAPI_IsWindow($hLastSelectedWin) Then
+            Local $hInsertAfter = $hLastPrevWin
+            If Not _WinAPI_IsWindow($hInsertAfter) Then $hInsertAfter = 1 ; HWND_BOTTOM if previous sibling is gone
+            _WinAPI_SetWindowPos($hLastSelectedWin, $hInsertAfter, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE))
+        EndIf
+        $hLastSelectedWin = $hTarget
+        $hLastPrevWin = _WinAPI_GetWindow($hTarget, 3) ; GW_HWNDPREV = 3
+        
+        _WinAPI_SetWindowPos($hTarget, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE)) ; HWND_TOP = 0
+        If $bGUI_Visible Then
+            WinActivate($hGUI)
+            _WinAPI_SetWindowPos($hGUI, 0, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE)) ; Keep Manager above it
+        EndIf
+    EndIf
+    
+    If $hBorderWin = 0 Then
+        $hBorderWin = GUICreate("", $aPos[2], $aPos[3], $aPos[0], $aPos[1], $WS_POPUP, BitOR($WS_EX_LAYERED, $WS_EX_TRANSPARENT, $WS_EX_TOPMOST))
+        GUISetBkColor(0xABCDEF, $hBorderWin)
+        _WinAPI_SetLayeredWindowAttributes($hBorderWin, 0xABCDEF, 255, 1)
+        GUISetState(@SW_SHOWNOACTIVATE, $hBorderWin)
+    Else
+        _WinAPI_SetWindowPos($hBorderWin, 0, $aPos[0], $aPos[1], $aPos[2], $aPos[3], $SWP_NOACTIVATE)
+    Endif
+    
+    Local $hDC = _WinAPI_GetWindowDC($hBorderWin)
+    Local $hRect = _WinAPI_CreateRectRgn(0, 0, $aPos[2], $aPos[3])
+    Local $hInnerRect = _WinAPI_CreateRectRgn(2, 2, $aPos[2] - 2, $aPos[3] - 2)
+    _WinAPI_CombineRgn($hRect, $hRect, $hInnerRect, 4)
+    
+    Local $hBrush = _WinAPI_CreateSolidBrush(0xFF6600)
+    _WinAPI_FillRgn($hDC, $hRect, $hBrush)
+    
+    _WinAPI_DeleteObject($hBrush)
+    _WinAPI_DeleteObject($hRect)
+    _WinAPI_DeleteObject($hInnerRect)
+    _WinAPI_ReleaseDC($hBorderWin, $hDC)
+EndFunc
+
+Func _ClearOrangeBorder()
+    If $hLastSelectedWin <> 0 Then
+        If _WinAPI_IsWindow($hLastSelectedWin) Then
+            Local $hInsertAfter = $hLastPrevWin
+            If Not _WinAPI_IsWindow($hInsertAfter) Then $hInsertAfter = 1 ; HWND_BOTTOM if previous sibling is gone
+            _WinAPI_SetWindowPos($hLastSelectedWin, $hInsertAfter, 0, 0, 0, 0, BitOR($SWP_NOMOVE, $SWP_NOSIZE, $SWP_NOACTIVATE))
+        EndIf
+        $hLastSelectedWin = 0
+        $hLastPrevWin = 0
+    EndIf
+    If $hBorderWin <> 0 Then
+        GUIDelete($hBorderWin)
+        $hBorderWin = 0
+    Endif
+EndFunc
+
+
+Func _DrawOrangeBorderxx($hTarget)
+    If Not _WinAPI_IsWindow($hTarget) Then Return
+    Local $aPos = WinGetPos($hTarget)
     If Not IsArray($aPos) Then Return ; Guard against invalid window parameters
     
     Local Const $GW_HWNDNEXT = 2
@@ -128,7 +190,7 @@ Func _DrawOrangeBorder($hTarget)
     _WinAPI_ReleaseDC($hBorderWin, $hDC)
 EndFunc
 
-Func _ClearOrangeBorder()
+Func _ClearOrangeBorderxx()
     If $hDwmThumbnail <> 0 Then
         DllCall("dwmapi.dll", "long", "DwmUnregisterThumbnail", "ptr", $hDwmThumbnail)
         $hDwmThumbnail = 0
